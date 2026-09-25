@@ -1,0 +1,14 @@
+.mark {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--color-neon);
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(57, 231, 95, 0.16), transparent 58%),
+    var(--color-card);
+}

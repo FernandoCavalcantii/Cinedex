@@ -35,14 +35,6 @@
   opacity: 0.75;
 }
 
-.placeholder {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: var(--color-text-muted);
-  font-size: 12px;
-}
-
 .overlay {
   position: absolute;
   right: 0;
