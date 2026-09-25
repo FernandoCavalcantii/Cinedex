@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import delete, func, insert, select
 
 from app.db.session import AsyncSessionLocal
+from app.scripts.title_cleaning import normalize_catalog_title
 from app.movies.models import (
     DimCompany,
     DimGenre,
@@ -97,7 +98,7 @@ def _movie_rows(path: Path) -> Iterable[dict[str, Any]]:
         yield {
             "sk_movie_id": normalized["sk_movie_id"],
             "id_filme": normalized["id_filme"],
-            "titulo": normalized["titulo"],
+            "titulo": normalize_catalog_title(normalized["titulo"]),
             "data_lancamento": _parse_date(normalized["data_lancamento"]),
             "ano_lancamento": _parse_int(normalized["ano_lancamento"]),
             "duracao_minutos": _parse_int(normalized["duracao_minutos"]),

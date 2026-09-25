@@ -44,7 +44,7 @@ export function MovieCard({ movie }: MovieCardProps) {
             onError={() => setPosterFailed(true)}
           />
         ) : (
-          <PosterMark title={movie.titulo} />
+          <PosterMark title={movie.titulo} genres={movie.genres.map((genre) => genre.nome_genero)} />
         )}
         <span className={styles.overlay}>
           {genres ? <span>{genres}</span> : null}

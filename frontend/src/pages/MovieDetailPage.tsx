@@ -73,7 +73,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
               onError={() => setPosterFailed(true)}
             />
           ) : (
-            <PosterMark title={movie.titulo} />
+            <PosterMark title={movie.titulo} genres={movie.genres.map((genre) => genre.nome_genero)} />
           )}
         </div>
         <div className={styles.intro}>

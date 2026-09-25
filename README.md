@@ -3,7 +3,7 @@
 Base inicial para evoluir a atividade do RocketLab 2026.2. Ela preserva a organização do backend,
 o modelo relacional do catálogo de filmes em SQLAlchemy 2.0 e o histórico de
 migrações com Alembic. A API do catálogo já está exposta e o frontend Vite
-tem o layout base da aplicação, ainda sem consumir a listagem de filmes.
+lista os filmes e abre o detalhe de cada um.
 
 Os CSVs usados no bootcamp foram organizados dentro do próprio repositório em
 `data/raw/`, separados em `bases-1/` e `bases-2/`, para facilitar o uso durante
@@ -79,7 +79,9 @@ npm install
 npm run dev
 ```
 
-O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca confirmada com Enter filtra `/movies?q=...`.
+O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca confirmada com Enter filtra `/movies?q=...`. O clique no card abre `/movies/{id}`. Sem pôster, o card mostra um cartaz com a marca do Cinedex e o título.
+
+Na carga, `normalize_catalog_title` desfaz aspas dobradas de escape do CSV só no título do filme. O arquivo original não muda, e um título criado pela API não passa por essa regra.
 
 ## API do catalogo
 
