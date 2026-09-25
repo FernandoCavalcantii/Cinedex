@@ -50,8 +50,21 @@
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   padding: 8px 2px 12px;
+  cursor: grab;
   scrollbar-width: thin;
   scrollbar-color: #2e3033 transparent;
+}
+
+.track img,
+.track a {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
 }
 
 .track::-webkit-scrollbar {
