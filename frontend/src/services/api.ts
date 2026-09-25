@@ -20,6 +20,7 @@ export function getApiBaseUrl(): string {
 export async function apiGet<T>(
   path: string,
   query?: Record<string, QueryValue>,
+  signal?: AbortSignal,
 ): Promise<T> {
   const url = new URL(path.replace(/^\//, ""), `${getApiBaseUrl()}/`);
 
@@ -31,7 +32,7 @@ export async function apiGet<T>(
     }
   }
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal });
   if (!response.ok) {
     throw new ApiError(response.status, `Request failed with status ${response.status}`);
   }

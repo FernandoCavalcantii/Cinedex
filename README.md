@@ -53,20 +53,25 @@ Para desenvolvimento multi-plataforma, o repositório já inclui:
 - `frontend/Dockerfile` para a aplicação Vite;
 - `docker-compose.yml` para orquestração.
 
-Fluxo recomendado:
+Na primeira vez, ou depois de mudar Dockerfile e dependências:
 
 ```bash
-docker compose up --build backend
-docker compose run --rm seed
+docker compose up -d --build
 ```
 
-Depois disso a API fica disponível em `http://localhost:8000`. Use
-`http://localhost:8000/docs` para a documentação automática. O endpoint
-`GET /health` permite conferir se a aplicação iniciou corretamente.
+No dia a dia:
+
+```bash
+docker compose up -d
+```
+
+Isso sobe a API, o frontend e, se o volume `rocketlab-data` ainda estiver vazio, a carga dos CSVs. O banco fica nesse volume. `docker compose down` para os containers e mantém os dados. A carga só roda de novo se o volume for removido com `docker compose down -v`.
+
+A API fica em `http://localhost:8000` (`/docs` e `GET /health`). A interface fica em `http://localhost:5173`.
 
 ## Frontend
 
-O app fica em `frontend/` (Vite, React e TypeScript). Para subir localmente, com Node 18.19 ou superior:
+O app também pode subir fora do Docker, com Node 18.19 ou superior, desde que a API esteja em `http://localhost:8000`:
 
 ```bash
 cd frontend
@@ -74,15 +79,7 @@ npm install
 npm run dev
 ```
 
-A interface abre em `http://localhost:5173`. A busca leva para `/movies?q=...`, mas a listagem ainda não chama a API. O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`.
-
-No Docker, o frontend sobe com o profile do compose:
-
-```bash
-docker compose --profile frontend up --build
-```
-
-A interface fica em `http://localhost:5173`.
+O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca confirmada com Enter filtra `/movies?q=...`.
 
 ## API do catalogo
 

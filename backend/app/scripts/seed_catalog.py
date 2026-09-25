@@ -12,7 +12,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, insert
+from sqlalchemy import delete, func, insert, select
 
 from app.db.session import AsyncSessionLocal
 from app.movies.models import (
@@ -217,7 +217,22 @@ async def _insert_rows(table: Any, rows: Iterable[dict[str, Any]], batch_size: i
     return inserted_rows
 
 
-async def seed_catalog(data_root: Path, batch_size: int = 5000, reset: bool = True) -> None:
+async def _catalog_has_movies() -> bool:
+    async with AsyncSessionLocal() as session:
+        total = await session.scalar(select(func.count()).select_from(DimMovie))
+    return bool(total)
+
+
+async def seed_catalog(
+    data_root: Path,
+    batch_size: int = 5000,
+    reset: bool = True,
+    skip_if_present: bool = False,
+) -> None:
+    if skip_if_present and await _catalog_has_movies():
+        LOGGER.info("Catálogo já populado no volume. Carga ignorada.")
+        return
+
     if reset:
         LOGGER.info("Limpando tabelas antes da carga inicial...")
         await _truncate_tables()
@@ -298,6 +313,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Não limpar as tabelas antes de importar os CSVs.",
     )
+    parser.add_argument(
+        "--if-empty",
+        action="store_true",
+        help="Não carregar os CSVs se o catálogo já tiver filmes.",
+    )
     return parser
 
 
@@ -310,7 +330,12 @@ async def _main_async() -> None:
     if not args.data_root.exists():
         raise FileNotFoundError(f"Diretório de dados não encontrado: {args.data_root}")
 
-    await seed_catalog(args.data_root, batch_size=args.batch_size, reset=not args.no_reset)
+    await seed_catalog(
+        args.data_root,
+        batch_size=args.batch_size,
+        reset=not args.no_reset,
+        skip_if_present=args.if_empty,
+    )
 
 
 def main() -> None:

@@ -95,6 +95,7 @@ class MovieListItem(MovieBase):
     model_config = ConfigDict(from_attributes=True)
 
     sk_movie_id: str
+    duracao_minutos: int | None = Field(default=None, ge=0)
     genres: list[GenreSummary] = Field(default_factory=list)
     average_rating: float | None = None
     review_count: int = 0
