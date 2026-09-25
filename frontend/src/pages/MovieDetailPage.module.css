@@ -1,5 +1,310 @@
-.note {
-  margin-top: 16px;
+.status {
+  margin: 28px 0 0;
   color: var(--color-text-secondary);
   font-size: 14px;
+}
+
+.status button,
+.back {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(57, 231, 95, 0.25);
+  border-radius: 6px;
+  background: rgba(57, 231, 95, 0.1);
+  color: var(--color-neon);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sheet {
+  position: relative;
+  margin: -32px -32px 0;
+  padding: 32px 32px 0;
+}
+
+.backdrop,
+.brandBackdrop {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 460px;
+  pointer-events: none;
+}
+
+.backdrop {
+  width: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.brandBackdrop {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 42% 70% at 82% 38%, rgba(57, 231, 95, 0.34), transparent 62%),
+    radial-gradient(ellipse 28% 40% at 18% 88%, rgba(57, 231, 95, 0.1), transparent 70%),
+    linear-gradient(155deg, #222428 0%, #141516 58%, #18191b 100%);
+}
+
+.brandBackdrop::before {
+  content: "CINEDEX";
+  position: absolute;
+  top: 45%;
+  right: 0%;
+  color: transparent;
+  font-family: var(--font-display);
+  font-size: 148px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 0.8;
+  -webkit-text-stroke: 1px rgba(57, 231, 95, 0.45);
+}
+
+.sheet::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 460px;
+  background:
+    linear-gradient(to right, rgba(24, 25, 27, 0.88) 0%, rgba(24, 25, 27, 0.55) 48%, rgba(24, 25, 27, 0.72) 100%),
+    linear-gradient(to bottom, rgba(24, 25, 27, 0.15) 0%, var(--color-bg) 100%);
+  pointer-events: none;
+}
+
+.sheet > :not(.backdrop):not(.brandBackdrop) {
+  position: relative;
+  z-index: 1;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 28px;
+  margin-top: 28px;
+}
+
+.poster {
+  position: relative;
+  height: 300px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--color-card);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.poster img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.intro {
+  min-width: 0;
+}
+
+.movieTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.genres li {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  color: var(--color-neon);
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.outOf {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.track {
+  width: 88px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #39e75f, #2bc44e);
+}
+
+.count {
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.studios {
+  margin: 12px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.edit {
+  display: inline-block;
+  margin-top: 18px;
+  color: var(--color-neon);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.block {
+  margin-top: 32px;
+}
+
+.block h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.block > p,
+.credits dd,
+.reviews p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.credits {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.credits div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.credits dt {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.reviews {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reviews li {
+  padding: 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: var(--color-card);
+}
+
+.reviewHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.reviewHead span:last-child {
+  color: var(--color-neon);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.reviews time {
+  display: block;
+  margin: 4px 0 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .poster {
+    width: 160px;
+    height: 240px;
+  }
+
+  .movieTitle {
+    font-size: 32px;
+  }
+
+  .credits div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }

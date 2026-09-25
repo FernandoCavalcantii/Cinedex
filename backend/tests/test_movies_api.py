@@ -85,13 +85,14 @@ async def test_movie_crud_flow(client) -> None:
 
     update_response = await client.put(
         f"/api/v1/movies/{movie_id}",
-        json={"titulo": "Updated Movie", "status_filme": "Lançado"},
+        json={"titulo": "Updated Movie", "status_filme": "Lançado", "sinopse": "SEM DESCRIÇÃO"},
     )
 
     assert update_response.status_code == 200
     updated_movie = update_response.json()
     assert updated_movie["titulo"] == "Updated Movie"
     assert updated_movie["status_filme"] == "Lançado"
+    assert updated_movie["sinopse"] == "No synopsis available."
 
     delete_response = await client.delete(f"/api/v1/movies/{movie_id}")
     assert delete_response.status_code == 204

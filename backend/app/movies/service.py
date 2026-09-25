@@ -26,8 +26,18 @@ from app.movies.schemas import (
 )
 
 
+MISSING_SYNOPSIS = "sem descrição"
+REPLACEMENT_SYNOPSIS = "No synopsis available."
+
+
 def _coalesce_decimal(value: Decimal | None) -> float | None:
     return None if value is None else float(value)
+
+
+def _normalize_sinopse(value: str | None) -> str | None:
+    if value is not None and value.strip().casefold() == MISSING_SYNOPSIS:
+        return REPLACEMENT_SYNOPSIS
+    return value
 
 
 def _build_average(movie: DimMovie) -> float | None:
@@ -56,7 +66,7 @@ def _movie_list_item(movie: DimMovie) -> MovieListItem:
         ano_lancamento=movie.ano_lancamento,
         duracao_minutos=movie.duracao_minutos,
         status_filme=movie.status_filme,
-        sinopse=movie.sinopse,
+        sinopse=_normalize_sinopse(movie.sinopse),
         url_poster=movie.url_poster,
         url_backdrop=movie.url_backdrop,
         genres=[GenreSummary.model_validate(genre) for genre in movie.genres],
@@ -95,7 +105,7 @@ def _movie_detail(movie: DimMovie) -> MovieDetail:
         ano_lancamento=movie.ano_lancamento,
         duracao_minutos=movie.duracao_minutos,
         status_filme=movie.status_filme,
-        sinopse=movie.sinopse,
+        sinopse=_normalize_sinopse(movie.sinopse),
         url_poster=movie.url_poster,
         url_backdrop=movie.url_backdrop,
         genres=[GenreSummary.model_validate(genre) for genre in movie.genres],
@@ -195,7 +205,7 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
         ano_lancamento=movie_in.ano_lancamento,
         duracao_minutos=movie_in.duracao_minutos,
         status_filme=movie_in.status_filme,
-        sinopse=movie_in.sinopse,
+        sinopse=_normalize_sinopse(movie_in.sinopse),
         url_poster=movie_in.url_poster,
         url_backdrop=movie_in.url_backdrop,
     )
@@ -216,6 +226,8 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
 async def update_movie(session: AsyncSession, movie_id: str, movie_in: MovieUpdate) -> MovieDetail:
     movie = await _load_movie_detail(session, movie_id)
     update_data = movie_in.model_dump(exclude_unset=True)
+    if "sinopse" in update_data:
+        update_data["sinopse"] = _normalize_sinopse(update_data["sinopse"])
     for field, value in update_data.items():
         setattr(movie, field, value)
 

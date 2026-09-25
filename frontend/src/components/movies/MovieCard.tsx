@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { MovieListItem } from "../../types/movie";
+import { PosterMark } from "./PosterMark";
 import styles from "./MovieCard.module.css";
 
 type MovieCardProps = {
@@ -43,7 +44,7 @@ export function MovieCard({ movie }: MovieCardProps) {
             onError={() => setPosterFailed(true)}
           />
         ) : (
-          <span className={styles.placeholder}>No poster</span>
+          <PosterMark title={movie.titulo} />
         )}
         <span className={styles.overlay}>
           {genres ? <span>{genres}</span> : null}

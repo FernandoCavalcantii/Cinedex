@@ -26,3 +26,29 @@ export type PaginatedMovies = {
   limit: number;
   has_more: boolean;
 };
+
+export type CompanySummary = {
+  sk_company_id: string;
+  nome_produtora: string;
+};
+
+export type PersonSummary = {
+  sk_person_id: string;
+  nome_pessoa: string;
+  tipo_pessoa: string;
+};
+
+export type MovieReview = {
+  sk_movie_review_id: string;
+  sk_movie_id: string;
+  nome: string;
+  nota: number;
+  comentario: string;
+  created_at: string;
+};
+
+export type MovieDetail = MovieListItem & {
+  companies: CompanySummary[];
+  people: PersonSummary[];
+  reviews: MovieReview[];
+};

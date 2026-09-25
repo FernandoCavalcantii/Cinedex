@@ -1,5 +1,5 @@
 import { apiGet } from "./api";
-import type { PaginatedMovies } from "../types/movie";
+import type { MovieDetail, PaginatedMovies } from "../types/movie";
 
 type ListMoviesQuery = {
   skip?: number;
@@ -12,4 +12,8 @@ export function listMovies(
   signal?: AbortSignal,
 ): Promise<PaginatedMovies> {
   return apiGet<PaginatedMovies>("movies", query, signal);
+}
+
+export function getMovie(movieId: string, signal?: AbortSignal): Promise<MovieDetail> {
+  return apiGet<MovieDetail>(`movies/${movieId}`, undefined, signal);
 }
