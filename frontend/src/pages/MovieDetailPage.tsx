@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
 import { PosterMark } from "../components/movies/PosterMark";
+import { ReviewForm } from "../components/movies/ReviewForm";
 import { ApiError } from "../services/api";
 import { getMovie } from "../services/movies";
 import type { MovieDetail, PersonSummary } from "../types/movie";
@@ -141,6 +142,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
 
       <section className={styles.block}>
         <h3>Reviews</h3>
+        <ReviewForm movieId={movie.sk_movie_id} />
         {reviews.length === 0 ? <p className={styles.empty}>No reviews yet.</p> : null}
         <ul className={styles.reviews}>
           {reviews.map((review) => (

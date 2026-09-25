@@ -1,5 +1,5 @@
-import { apiGet } from "./api";
-import type { MovieDetail, PaginatedMovies } from "../types/movie";
+import { apiGet, apiPost } from "./api";
+import type { MovieDetail, MovieReview, PaginatedMovies } from "../types/movie";
 
 type ListMoviesQuery = {
   skip?: number;
@@ -16,4 +16,15 @@ export function listMovies(
 
 export function getMovie(movieId: string, signal?: AbortSignal): Promise<MovieDetail> {
   return apiGet<MovieDetail>(`movies/${movieId}`, undefined, signal);
+}
+
+export type ReviewInput = {
+  movie_id: string;
+  nome: string;
+  nota: number;
+  comentario: string;
+};
+
+export function createReview(review: ReviewInput): Promise<MovieReview> {
+  return apiPost<MovieReview>("reviews", review);
 }
