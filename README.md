@@ -2,8 +2,8 @@
 
 Base inicial para evoluir a atividade do RocketLab 2026.2. Ela preserva a organização do backend,
 o modelo relacional do catálogo de filmes em SQLAlchemy 2.0 e o histórico de
-migrações com Alembic, sem incluir interface, dados CSV, endpoints de negócio
-ou rotinas de carga.
+migrações com Alembic. A API do catálogo já está exposta e o frontend Vite
+tem o layout base da aplicação, ainda sem consumir a listagem de filmes.
 
 Os CSVs usados no bootcamp foram organizados dentro do próprio repositório em
 `data/raw/`, separados em `bases-1/` e `bases-2/`, para facilitar o uso durante
@@ -28,6 +28,7 @@ o desenvolvimento e a futura carga inicial.
 │   └── tests/
 ├── data/
 │   └── raw/               # CSVs de apoio do bootcamp
+├── frontend/              # app Vite + React + TypeScript
 └── README.md
 ```
 
@@ -49,7 +50,7 @@ cp .env.example .env
 
 Para desenvolvimento multi-plataforma, o repositório já inclui:
 - `backend/Dockerfile` para a API FastAPI;
-- `frontend/Dockerfile` para a futura aplicação Vite;
+- `frontend/Dockerfile` para a aplicação Vite;
 - `docker-compose.yml` para orquestração.
 
 Fluxo recomendado:
@@ -59,17 +60,29 @@ docker compose up --build backend
 docker compose run --rm seed
 ```
 
-Depois disso a API fica disponível em `http://localhost:8000`.
+Depois disso a API fica disponível em `http://localhost:8000`. Use
+`http://localhost:8000/docs` para a documentação automática. O endpoint
+`GET /health` permite conferir se a aplicação iniciou corretamente.
 
-O serviço de frontend já está preparado no compose, mas só entra em uso quando a aplicação Vite for criada na próxima fase. Quando isso acontecer, basta habilitar o profile do frontend:
+## Frontend
+
+O app fica em `frontend/` (Vite, React e TypeScript). Para subir localmente, com Node 18.19 ou superior:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+A interface abre em `http://localhost:5173`. A busca leva para `/movies?q=...`, mas a listagem ainda não chama a API. O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`.
+
+No Docker, o frontend sobe com o profile do compose:
 
 ```bash
 docker compose --profile frontend up --build
 ```
 
-A API mínima ficará disponível em `http://localhost:8000`; use
-`http://localhost:8000/docs` para a documentação automática. O endpoint
-`GET /health` permite conferir se a aplicação iniciou corretamente.
+A interface fica em `http://localhost:5173`.
 
 ## API do catalogo
 
