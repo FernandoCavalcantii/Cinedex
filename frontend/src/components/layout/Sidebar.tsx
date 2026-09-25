@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import styles from "./Sidebar.module.css";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", end: true },
@@ -7,15 +8,15 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   return (
-    <aside className="sidebar">
-      <nav className="sidebar__nav" aria-label="Primary">
+    <aside className={styles.sidebar}>
+      <nav className={styles.nav} aria-label="Primary">
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              isActive ? "nav-pill nav-pill--active" : "nav-pill"
+              isActive ? `${styles.pill} ${styles.active}` : styles.pill
             }
           >
             {item.label}

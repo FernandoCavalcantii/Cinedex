@@ -1,14 +1,15 @@
 import { Outlet } from "react-router-dom";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import styles from "./AppShell.module.css";
 
 export function AppShell() {
   return (
-    <div className="app-shell">
+    <div className={styles.shell}>
       <Header />
-      <div className="app-body">
+      <div className={styles.body}>
         <Sidebar />
-        <main className="main">
+        <main className={styles.main}>
           <Outlet />
         </main>
       </div>

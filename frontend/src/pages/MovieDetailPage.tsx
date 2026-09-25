@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
+import styles from "./MovieDetailPage.module.css";
 
 export function MovieDetailPage() {
   const { movieId } = useParams();
@@ -7,7 +8,7 @@ export function MovieDetailPage() {
   return (
     <section>
       <PageHeader eyebrow="Movie Management" title="Movie detail" />
-      <p className="page-note">Selected movie: {movieId}</p>
+      <p className={styles.note}>Selected movie: {movieId}</p>
     </section>
   );
 }
