@@ -1,0 +1,43 @@
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 6px;
+}
+
+.page {
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.page:hover {
+  border-color: rgba(57, 231, 95, 0.45);
+  color: var(--color-text-primary);
+}
+
+.page.current,
+.page.current:hover {
+  border-color: var(--color-neon);
+  background: var(--color-neon);
+  color: #141517;
+}
+
+.ellipsis {
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+}

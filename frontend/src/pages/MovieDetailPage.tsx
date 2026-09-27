@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
+import { Button } from "../components/ui/Button";
+import { MoviePlaceholderBg } from "../components/movies/MoviePlaceholderBg";
 import { PosterMark } from "../components/movies/PosterMark";
 import { ReviewForm } from "../components/movies/ReviewForm";
 import { ApiError } from "../services/api";
@@ -164,6 +166,28 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
   );
 }
 
+function BackButton() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  function goBack() {
+    if (location.key === "default") {
+      navigate("/movies");
+      return;
+    }
+    navigate(-1);
+  }
+
+  return (
+    <Button className={styles.back} onClick={goBack}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      Back
+    </Button>
+  );
+}
+
 export function MovieDetailPage() {
   const { movieId } = useParams();
   const movie = useQuery({
@@ -179,7 +203,11 @@ export function MovieDetailPage() {
       : null;
 
   return (
-    <section className={movie.isSuccess ? styles.sheet : undefined}>
+    <section
+      className={
+        movie.isSuccess ? (backdropUrl ? styles.sheet : `${styles.sheet} ${styles.placeholderSheet}`) : undefined
+      }
+    >
       {movie.isSuccess && backdropUrl ? (
         <img
           className={styles.backdrop}
@@ -189,7 +217,8 @@ export function MovieDetailPage() {
           onError={() => setFailedBackdropId(movie.data?.sk_movie_id ?? null)}
         />
       ) : null}
-      {movie.isSuccess && !backdropUrl ? <div className={styles.brandBackdrop} aria-hidden="true" /> : null}
+      {movie.isSuccess && !backdropUrl ? <MoviePlaceholderBg className={styles.placeholder} /> : null}
+      <BackButton />
       <PageHeader eyebrow="Movie Management" title="Movie detail" />
 
       {movie.isPending ? <p className={styles.status}>Loading movie…</p> : null}
@@ -197,15 +226,7 @@ export function MovieDetailPage() {
       {movie.isError ? (
         <div className={styles.status}>
           <p>{detailErrorMessage(movie.error)}</p>
-          {missing ? (
-            <Link className={styles.back} to="/movies">
-              Back to catalog
-            </Link>
-          ) : (
-            <button type="button" onClick={() => void movie.refetch()}>
-              Try again
-            </button>
-          )}
+          {!missing ? <Button onClick={() => void movie.refetch()}>Try again</Button> : null}
         </div>
       ) : null}
 

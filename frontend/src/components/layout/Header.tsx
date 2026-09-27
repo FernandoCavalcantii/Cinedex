@@ -1,16 +1,41 @@
-import { FormEvent } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Header.module.css";
+
+const SEARCH_DELAY_MS = 300;
 
 export function Header() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") ?? "";
+  const [draft, setDraft] = useState(query);
+
+  useEffect(() => {
+    setDraft(query);
+  }, [query]);
+
+  useEffect(() => {
+    const nextQuery = draft.trim();
+    if (nextQuery === query) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      if (nextQuery) {
+        params.set("q", nextQuery);
+      }
+      const search = params.toString();
+      navigate(search ? `/movies?${search}` : "/movies", { replace: true });
+    }, SEARCH_DELAY_MS);
+    return () => window.clearTimeout(handle);
+  }, [draft, query, navigate]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const nextQuery = String(formData.get("q") ?? "").trim();
+    const nextQuery = draft.trim();
+    if (nextQuery === query) {
+      return;
+    }
     const params = new URLSearchParams();
     if (nextQuery) {
       params.set("q", nextQuery);
@@ -40,8 +65,8 @@ export function Header() {
         <input
           name="q"
           type="search"
-          defaultValue={query}
-          key={query}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
           placeholder="Search titles, genres, directors…"
           aria-label="Search movies"
         />

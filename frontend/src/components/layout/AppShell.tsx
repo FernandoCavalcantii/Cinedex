@@ -1,15 +1,23 @@
-import { Outlet } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import styles from "./AppShell.module.css";
 
 export function AppShell() {
+  const { pathname, search } = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname, search]);
+
   return (
     <div className={styles.shell}>
       <Header />
       <div className={styles.body}>
         <Sidebar />
-        <main className={styles.main}>
+        <main ref={mainRef} className={styles.main}>
           <Outlet />
         </main>
       </div>

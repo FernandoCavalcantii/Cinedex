@@ -3,6 +3,7 @@ import { DragEvent, MouseEvent, PointerEvent, useEffect, useRef, useState } from
 import { Link } from "react-router-dom";
 import { ApiError } from "../../services/api";
 import { listMovies } from "../../services/movies";
+import { Button } from "../ui/Button";
 import { MovieCard } from "./MovieCard";
 import styles from "./MovieStrip.module.css";
 
@@ -189,9 +190,7 @@ export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripP
       {movies.isError ? (
         <div className={styles.status}>
           <p>{catalogErrorMessage(movies.error)}</p>
-          <button type="button" onClick={() => void movies.refetch()}>
-            Try again
-          </button>
+          <Button onClick={() => void movies.refetch()}>Try again</Button>
         </div>
       ) : null}
 

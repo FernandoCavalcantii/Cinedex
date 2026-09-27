@@ -1,6 +1,8 @@
 .card {
   position: relative;
   flex: 0 0 180px;
+  width: 180px;
+  min-width: 0;
   scroll-snap-align: start;
 }
 

@@ -1,0 +1,10 @@
+{
+  "description": "Explore a sleek movie database with top-rated films, recent activity, and management features, designed for movie enthusiasts and administrators.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
