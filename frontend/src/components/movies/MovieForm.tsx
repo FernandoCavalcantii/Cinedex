@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ApiError } from "../../services/api";
 import { createMovie, deleteMovie, getMovie, listGenres, updateMovie, type MovieInput } from "../../services/movies";
 import { Button } from "../ui/Button";
@@ -8,6 +8,7 @@ import styles from "./MovieForm.module.css";
 
 type MovieFormProps = {
   movieId?: string;
+  onLeave: () => void;
 };
 
 const YEAR_MIN = 1888;
@@ -130,7 +131,7 @@ function directorNames(people: { nome_pessoa: string; tipo_pessoa: string }[]): 
     .join(", ");
 }
 
-export function MovieForm({ movieId }: MovieFormProps) {
+export function MovieForm({ movieId, onLeave }: MovieFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEdit = Boolean(movieId);
@@ -300,6 +301,7 @@ export function MovieForm({ movieId }: MovieFormProps) {
           className={titleMessage && titleMessage !== "Add a title." ? styles.invalid : undefined}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={500}
+          placeholder="Ex: The Matrix"
           required
           aria-invalid={titleMessage && titleMessage !== "Add a title." ? true : undefined}
         />
@@ -317,7 +319,7 @@ export function MovieForm({ movieId }: MovieFormProps) {
           className={directorMessage ? styles.invalid : undefined}
           value={director}
           onChange={(event) => setDirector(event.target.value)}
-          placeholder="Lana Wachowski, Lilly Wachowski"
+          placeholder="Ex: Lana Wachowski, Lilly Wachowski"
           aria-invalid={directorMessage ? true : undefined}
         />
       </div>
@@ -349,7 +351,7 @@ export function MovieForm({ movieId }: MovieFormProps) {
             inputMode="numeric"
             value={duration}
             onChange={(event) => setDuration(event.target.value)}
-            placeholder="136"
+            placeholder="Ex: 136"
             aria-invalid={durationMessage ? true : undefined}
           />
         </div>
@@ -386,6 +388,7 @@ export function MovieForm({ movieId }: MovieFormProps) {
           className={posterMessage ? styles.invalid : undefined}
           value={posterUrl}
           onChange={(event) => setPosterUrl(event.target.value)}
+          placeholder="Ex: https://image.example.com/poster.jpg"
           aria-invalid={posterMessage ? true : undefined}
         />
       </div>
@@ -400,11 +403,15 @@ export function MovieForm({ movieId }: MovieFormProps) {
           className={backdropMessage ? styles.invalid : undefined}
           value={backdropUrl}
           onChange={(event) => setBackdropUrl(event.target.value)}
+          placeholder="Ex: https://image.example.com/backdrop.jpg"
           aria-invalid={backdropMessage ? true : undefined}
         />
       </div>
       <fieldset className={styles.genres}>
-        <legend>Genres</legend>
+        <legend className={styles.labelRow}>
+          Genres
+          <FieldHint label="About the genres">You can select more than one, or none.</FieldHint>
+        </legend>
         {genres.isPending ? <p>Loading genres…</p> : null}
         {genres.isSuccess ? (
           <div className={styles.genreList}>
@@ -437,6 +444,7 @@ export function MovieForm({ movieId }: MovieFormProps) {
           onChange={(event) => setSynopsis(event.target.value)}
           rows={5}
           maxLength={4000}
+          placeholder="Ex: A computer hacker learns that the world he lives in is a simulation."
           aria-invalid={synopsisMessage ? true : undefined}
         />
       </div>
@@ -445,9 +453,9 @@ export function MovieForm({ movieId }: MovieFormProps) {
         <Button type="submit" disabled={save.isPending || issue !== null}>
           {save.isPending ? "Saving…" : "Save"}
         </Button>
-        <Link className={styles.cancel} to={isEdit ? `/movies/${movieId}` : "/movies"}>
+        <button type="button" className={styles.cancel} onClick={onLeave}>
           Cancel
-        </Link>
+        </button>
       </div>
     </form>
     {isEdit && confirmDelete ? (

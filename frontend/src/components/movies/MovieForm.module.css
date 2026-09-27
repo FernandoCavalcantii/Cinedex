@@ -110,6 +110,13 @@
   resize: vertical;
 }
 
+.form input::placeholder,
+.form textarea::placeholder {
+  color: #6a7078;
+  font-style: italic;
+  opacity: 1;
+}
+
 .form input:focus,
 .form textarea:focus,
 .form select:focus {
@@ -258,9 +265,14 @@
 }
 
 .cancel {
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--color-text-secondary);
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
   transition: color 0.15s ease;
 }
 

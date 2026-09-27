@@ -48,9 +48,27 @@
   border-color: rgba(57, 231, 95, 0.55);
 }
 
+.field,
 .scoreField {
   display: grid;
   gap: 6px;
+}
+
+.fieldError {
+  margin: 0;
+  color: #ff8d8d;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.form input.invalid,
+.form textarea.invalid,
+.form input.invalid:focus,
+.form textarea.invalid:focus {
+  border-color: #ff8d8d;
 }
 
 .scoreTitle {
@@ -91,11 +109,10 @@
 .tip {
   position: absolute;
   z-index: 2;
-  top: 50%;
-  right: calc(100% + 8px);
-  transform: translateY(-50%);
+  top: calc(100% + 6px);
+  left: 0;
   width: max-content;
-  max-width: 180px;
+  max-width: 240px;
   padding: 6px 8px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -128,6 +145,11 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.form button[type="submit"]:hover:not(:disabled) {
+  background: #8cffae;
 }
 
 .form button:disabled {

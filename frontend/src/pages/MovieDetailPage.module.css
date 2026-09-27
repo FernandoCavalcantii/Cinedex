@@ -189,6 +189,11 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  transition: color 0.15s ease;
+}
+
+.edit:hover {
+  color: #8cffae;
 }
 
 .confirm {
@@ -214,6 +219,11 @@
 
 .remove {
   color: #ff8d8d;
+  transition: color 0.15s ease;
+}
+
+.remove:hover:not(:disabled) {
+  color: #ffc7c7;
 }
 
 .quiet {
