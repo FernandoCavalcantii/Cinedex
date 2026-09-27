@@ -169,4 +169,8 @@
   .row {
     grid-template-columns: 1fr;
   }
+
+  .tip {
+    max-width: min(240px, calc(100vw - 48px));
+  }
 }

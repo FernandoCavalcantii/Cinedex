@@ -331,6 +331,17 @@
 }
 
 @media (max-width: 720px) {
+  .sheet {
+    margin: -20px -16px 0;
+    padding: 20px 16px 0;
+  }
+
+  .backdrop,
+  .placeholder,
+  .sheet::after {
+    height: 340px;
+  }
+
   .hero {
     grid-template-columns: 1fr;
   }

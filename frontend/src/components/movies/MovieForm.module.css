@@ -327,7 +327,19 @@
 }
 
 @media (max-width: 720px) {
+  .form {
+    margin-top: 16px;
+  }
+
+  .titleHead {
+    flex-wrap: wrap;
+  }
+
   .details {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+  }
+
+  .tip {
+    max-width: min(240px, calc(100vw - 48px));
   }
 }

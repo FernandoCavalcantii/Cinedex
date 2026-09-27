@@ -143,3 +143,31 @@
 .status button {
   margin-top: 12px;
 }
+
+@media (max-width: 720px) {
+  .header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+
+  .count {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .titleGroup {
+    grid-row: 2;
+    min-width: 0;
+  }
+
+  .viewAll {
+    grid-row: 2;
+  }
+
+  .tip {
+    right: 0;
+    left: auto;
+    max-width: min(220px, calc(100vw - 48px));
+  }
+}

@@ -72,3 +72,15 @@
 .hint:focus-within .tip {
   opacity: 1;
 }
+
+@media (max-width: 720px) {
+  .title {
+    font-size: 28px;
+  }
+
+  .tip {
+    right: 0;
+    left: auto;
+    max-width: min(240px, calc(100vw - 48px));
+  }
+}
