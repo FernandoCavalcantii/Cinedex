@@ -4,13 +4,22 @@ from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.movies.models import DimCompany, DimGenre, DimMovie, DimPerson, DimReview, MovieReview
+from app.movies.models import (
+    DimCompany,
+    DimGenre,
+    DimMovie,
+    DimPerson,
+    DimReview,
+    MovieReview,
+    bridge_movie_genre,
+)
 from app.movies.schemas import (
+    CatalogMetrics,
     CompanySummary,
     MovieCreate,
     MovieDetail,
@@ -25,6 +34,9 @@ from app.movies.schemas import (
     ReviewCreated,
     ReviewSummary,
     GenreSummary,
+    MetricGenreCount,
+    MetricRatedMovie,
+    MetricReviewer,
 )
 
 
@@ -435,3 +447,84 @@ async def create_review(session: AsyncSession, review_in: ReviewCreate) -> Revie
     await session.commit()
 
     return ReviewCreated.model_validate(review)
+
+
+async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
+    movie_count = await session.scalar(select(func.count()).select_from(DimMovie)) or 0
+    review_count = await session.scalar(select(func.count()).select_from(MovieReview)) or 0
+    user_count = await session.scalar(select(func.count(func.distinct(MovieReview.nome)))) or 0
+    reviewed = (
+        select(MovieReview.sk_movie_review_id)
+        .where(MovieReview.sk_movie_id == DimMovie.sk_movie_id)
+        .exists()
+    )
+    unreviewed_count = (
+        await session.scalar(select(func.count()).select_from(DimMovie).where(~reviewed)) or 0
+    )
+    average_rating = await session.scalar(select(func.avg(MovieReview.nota)))
+    reviews_last_7_days = (
+        await session.scalar(
+            select(func.count())
+            .select_from(MovieReview)
+            .where(MovieReview.created_at >= text("datetime('now', '-7 days')"))
+        )
+        or 0
+    )
+
+    reviewer_rows = await session.execute(
+        select(MovieReview.nome, func.count().label("qtd"))
+        .group_by(MovieReview.nome)
+        .order_by(func.count().desc(), MovieReview.nome)
+        .limit(8)
+    )
+    top_reviewers = [
+        MetricReviewer(nome=nome, review_count=int(count)) for nome, count in reviewer_rows.all()
+    ]
+
+    ranked = (
+        select(
+            MovieReview.sk_movie_id.label("sk_movie_id"),
+            func.count(MovieReview.sk_movie_review_id).label("qtd"),
+            func.avg(MovieReview.nota).label("media"),
+        )
+        .group_by(MovieReview.sk_movie_id)
+        .having(func.count(MovieReview.sk_movie_review_id) >= 3)
+        .subquery()
+    )
+    rated_rows = await session.execute(
+        select(DimMovie.sk_movie_id, DimMovie.titulo, ranked.c.media, ranked.c.qtd)
+        .join(ranked, ranked.c.sk_movie_id == DimMovie.sk_movie_id)
+        .order_by(ranked.c.media.desc(), ranked.c.qtd.desc(), DimMovie.titulo)
+        .limit(5)
+    )
+    top_rated = [
+        MetricRatedMovie(
+            sk_movie_id=movie_id,
+            titulo=title,
+            average_rating=float(average),
+            review_count=int(count),
+        )
+        for movie_id, title, average, count in rated_rows.all()
+    ]
+
+    genre_rows = await session.execute(
+        select(DimGenre.nome_genero, func.count(bridge_movie_genre.c.sk_movie_id))
+        .join(bridge_movie_genre, bridge_movie_genre.c.sk_genre_id == DimGenre.sk_genre_id)
+        .group_by(DimGenre.nome_genero)
+        .order_by(func.count(bridge_movie_genre.c.sk_movie_id).desc(), DimGenre.nome_genero)
+    )
+    genres = [
+        MetricGenreCount(nome_genero=name, movie_count=int(count)) for name, count in genre_rows.all()
+    ]
+
+    return CatalogMetrics(
+        movie_count=int(movie_count),
+        review_count=int(review_count),
+        user_count=int(user_count),
+        unreviewed_count=int(unreviewed_count),
+        average_rating=None if average_rating is None else float(average_rating),
+        reviews_last_7_days=int(reviews_last_7_days),
+        top_reviewers=top_reviewers,
+        top_rated=top_rated,
+        genres=genres,
+    )

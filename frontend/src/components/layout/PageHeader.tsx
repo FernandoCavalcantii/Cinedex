@@ -2,17 +2,15 @@ import { useId } from "react";
 import styles from "./PageHeader.module.css";
 
 type PageHeaderProps = {
-  eyebrow: string;
   title: string;
   info?: string;
 };
 
-export function PageHeader({ eyebrow, title, info }: PageHeaderProps) {
+export function PageHeader({ title, info }: PageHeaderProps) {
   const infoId = useId();
 
   return (
     <header>
-      <p className={styles.eyebrow}>{eyebrow}</p>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>{title}</h1>
         {info ? (

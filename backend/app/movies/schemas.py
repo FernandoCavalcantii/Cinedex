@@ -147,3 +147,32 @@ class ReviewCreate(BaseModel):
 
 class ReviewCreated(MovieReviewRead):
     pass
+
+
+class MetricReviewer(BaseModel):
+    nome: str
+    review_count: int
+
+
+class MetricRatedMovie(BaseModel):
+    sk_movie_id: str
+    titulo: str
+    average_rating: float
+    review_count: int
+
+
+class MetricGenreCount(BaseModel):
+    nome_genero: str
+    movie_count: int
+
+
+class CatalogMetrics(BaseModel):
+    movie_count: int
+    review_count: int
+    user_count: int
+    unreviewed_count: int
+    average_rating: float | None = None
+    reviews_last_7_days: int
+    top_reviewers: list[MetricReviewer]
+    top_rated: list[MetricRatedMovie]
+    genres: list[MetricGenreCount]

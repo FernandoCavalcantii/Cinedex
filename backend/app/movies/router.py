@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.movies.schemas import (
+    CatalogMetrics,
     GenreSummary,
     MovieCreate,
     MovieDetail,
-    MovieListItem,
     MovieUpdate,
     PaginatedMovieList,
     RecentActivity,
@@ -21,6 +21,7 @@ from app.movies.service import (
     create_movie,
     create_review,
     delete_movie,
+    get_catalog_metrics,
     get_movie,
     list_genres,
     list_movies,
@@ -31,6 +32,7 @@ from app.movies.service import (
 movies_router = APIRouter(prefix="/movies", tags=["movies"])
 genres_router = APIRouter(prefix="/genres", tags=["genres"])
 reviews_router = APIRouter(prefix="/reviews", tags=["reviews"])
+admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @movies_router.get("", response_model=PaginatedMovieList)
@@ -98,6 +100,11 @@ async def read_recent_activity(
     session: AsyncSession = Depends(get_db),
 ) -> list[RecentActivity]:
     return await list_recent_activity(session, limit=limit)
+
+
+@admin_router.get("/metrics", response_model=CatalogMetrics)
+async def read_catalog_metrics(session: AsyncSession = Depends(get_db)) -> CatalogMetrics:
+    return await get_catalog_metrics(session)
 
 
 @reviews_router.post("", response_model=ReviewCreated, status_code=status.HTTP_201_CREATED)

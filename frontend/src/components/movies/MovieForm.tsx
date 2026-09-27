@@ -199,6 +199,7 @@ export function MovieForm({ movieId, onLeave }: MovieFormProps) {
     mutationFn: (input: MovieInput) => (isEdit ? updateMovie(movieId ?? "", input) : createMovie(input)),
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ["movies"] });
+      await queryClient.invalidateQueries({ queryKey: ["metrics"] });
       await queryClient.invalidateQueries({ queryKey: ["movie", saved.sk_movie_id] });
       navigate(`/movies/${saved.sk_movie_id}`);
     },
@@ -215,6 +216,7 @@ export function MovieForm({ movieId, onLeave }: MovieFormProps) {
     mutationFn: () => deleteMovie(movieId ?? ""),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["movies"] });
+      await queryClient.invalidateQueries({ queryKey: ["metrics"] });
       navigate("/movies");
     },
     onError: (caught: unknown) => {

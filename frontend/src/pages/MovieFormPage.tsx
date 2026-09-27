@@ -25,7 +25,7 @@ export function MovieFormPage() {
         </svg>
         Back
       </Button>
-      <PageHeader eyebrow="Admin" title={movieId ? "Edit movie" : "Add movie"} />
+      <PageHeader title={movieId ? "Edit movie" : "Add movie"} />
       <MovieForm movieId={movieId} onLeave={leave} />
     </section>
   );

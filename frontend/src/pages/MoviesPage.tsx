@@ -56,7 +56,6 @@ export function MoviesPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Movie Management"
         title={title}
         info={info}
       />

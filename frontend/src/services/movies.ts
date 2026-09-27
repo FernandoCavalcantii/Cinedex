@@ -1,5 +1,12 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "./api";
-import type { GenreSummary, MovieDetail, MovieReview, PaginatedMovies, RecentActivity } from "../types/movie";
+import type {
+  CatalogMetrics,
+  GenreSummary,
+  MovieDetail,
+  MovieReview,
+  PaginatedMovies,
+  RecentActivity,
+} from "../types/movie";
 
 type ListMoviesQuery = {
   skip?: number;
@@ -66,4 +73,8 @@ export function updateMovie(movieId: string, movie: MovieInput): Promise<MovieDe
 
 export function deleteMovie(movieId: string): Promise<void> {
   return apiDelete(`movies/${movieId}`);
+}
+
+export function getCatalogMetrics(signal?: AbortSignal): Promise<CatalogMetrics> {
+  return apiGet<CatalogMetrics>("admin/metrics", undefined, signal);
 }

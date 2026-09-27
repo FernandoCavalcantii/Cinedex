@@ -7,7 +7,6 @@ export function DashboardPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Movie Management"
         title="Discover"
         info="Browse movies by section, such as Top Rated. Admin only: you can edit movies from the cards."
       />

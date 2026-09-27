@@ -56,6 +56,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
     mutationFn: () => deleteMovie(movie.sk_movie_id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["movies"] });
+      await queryClient.invalidateQueries({ queryKey: ["metrics"] });
       navigate("/movies");
     },
     onError: (caught: unknown) => {
@@ -261,7 +262,7 @@ export function MovieDetailPage() {
       ) : null}
       {movie.isSuccess && !backdropUrl ? <MoviePlaceholderBg className={styles.placeholder} /> : null}
       <BackButton />
-      <PageHeader eyebrow="Movie Management" title="Movie detail" />
+      <PageHeader title="Movie detail" />
 
       {movie.isPending ? <p className={styles.status}>Loading movie…</p> : null}
 

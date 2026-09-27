@@ -61,3 +61,32 @@ export type MovieDetail = MovieListItem & {
   people: PersonSummary[];
   reviews: MovieReview[];
 };
+
+export type MetricReviewer = {
+  nome: string;
+  review_count: number;
+};
+
+export type MetricRatedMovie = {
+  sk_movie_id: string;
+  titulo: string;
+  average_rating: number;
+  review_count: number;
+};
+
+export type MetricGenreCount = {
+  nome_genero: string;
+  movie_count: number;
+};
+
+export type CatalogMetrics = {
+  movie_count: number;
+  review_count: number;
+  user_count: number;
+  unreviewed_count: number;
+  average_rating: number | null;
+  reviews_last_7_days: number;
+  top_reviewers: MetricReviewer[];
+  top_rated: MetricRatedMovie[];
+  genres: MetricGenreCount[];
+};
