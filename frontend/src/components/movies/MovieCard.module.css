@@ -60,6 +60,10 @@
   opacity: 1;
 }
 
+.runtime {
+  text-transform: none;
+}
+
 .edit {
   position: absolute;
   top: 8px;

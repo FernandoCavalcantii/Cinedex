@@ -15,9 +15,9 @@ function formatDuration(minutes: number | null): string | null {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   if (hours === 0) {
-    return `${rest}m`;
+    return `${rest}min`;
   }
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+  return rest ? `${hours}h ${rest}min` : `${hours}h`;
 }
 
 export function MovieCard({ movie }: MovieCardProps) {
@@ -44,11 +44,16 @@ export function MovieCard({ movie }: MovieCardProps) {
             onError={() => setPosterFailed(true)}
           />
         ) : (
-          <PosterMark title={movie.titulo} genres={movie.genres.map((genre) => genre.nome_genero)} />
+          <PosterMark
+            title={movie.titulo}
+            year={movie.ano_lancamento}
+            genres={movie.genres.map((genre) => genre.nome_genero)}
+            duration={movie.duracao_minutos}
+          />
         )}
         <span className={styles.overlay}>
           {genres ? <span>{genres}</span> : null}
-          {duration ? <span>{duration}</span> : null}
+          {duration ? <span className={styles.runtime}>{duration}</span> : null}
         </span>
       </Link>
       <Link className={styles.edit} to={`${detailPath}/edit`} draggable={false} aria-label={`Edit ${movie.titulo}`}>

@@ -30,9 +30,9 @@ function formatDuration(minutes: number | null): string | null {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   if (hours === 0) {
-    return `${rest}m`;
+    return `${rest}min`;
   }
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+  return rest ? `${hours}h ${rest}min` : `${hours}h`;
 }
 
 function formatReviewDate(value: string): string {
@@ -76,7 +76,12 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
               onError={() => setPosterFailed(true)}
             />
           ) : (
-            <PosterMark title={movie.titulo} genres={movie.genres.map((genre) => genre.nome_genero)} />
+            <PosterMark
+              title={movie.titulo}
+              year={movie.ano_lancamento}
+              genres={movie.genres.map((genre) => genre.nome_genero)}
+              duration={movie.duracao_minutos}
+            />
           )}
         </div>
         <div className={styles.intro}>

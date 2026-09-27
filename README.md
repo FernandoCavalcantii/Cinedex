@@ -79,7 +79,7 @@ npm install
 npm run dev
 ```
 
-O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca filtra `/movies?q=...` depois de uma pausa curta, e o Enter confirma na hora. All Movies pagina o catálogo de 24 em 24. O clique no card abre `/movies/{id}`, e o botão Back volta à lista na mesma página. Sem pôster, o card mostra um cartaz com a marca do Cinedex e o título. Sem imagem de fundo, o detalhe usa um fundo desenhado do Cinedex. Nessa página dá para gravar uma avaliação: nome, nota de 0 a 10 (de 0.5 em 0.5) e resenha. A média e a lista atualizam na hora.
+O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca filtra `/movies?q=...` depois de uma pausa curta, e o Enter confirma na hora. All Movies pagina o catálogo de 24 em 24. O clique no card abre `/movies/{id}`, e o botão Back volta à lista na mesma página. Sem pôster, o card e o detalhe mostram um cartaz gerado: um de três desenhos e uma de dez cores, com a marca do Cinedex, o ano, até dois gêneros e a duração (`15min`, `1h 12min`). O desenho fica atrás desse texto. A duração usa `min` minúsculo também no detalhe e no hover do card. Sem imagem de fundo, o detalhe usa um fundo desenhado do Cinedex. Nessa página dá para gravar uma avaliação: nome, nota de 0 a 10 (de 0.5 em 0.5) e resenha. A média e a lista atualizam na hora.
 
 Na carga, `normalize_catalog_title` desfaz aspas dobradas de escape do CSV só no título do filme. O arquivo original não muda, e um título criado pela API não passa por essa regra.
 
