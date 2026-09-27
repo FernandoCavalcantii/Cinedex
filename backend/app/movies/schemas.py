@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class GenreSummary(BaseModel):
@@ -117,11 +117,28 @@ class PaginatedMovieList(BaseModel):
     has_more: bool
 
 
+class RecentActivity(BaseModel):
+    sk_movie_review_id: str
+    sk_movie_id: str
+    titulo: str
+    nome: str
+    nota: float
+    created_at: datetime
+
+
 class ReviewCreate(BaseModel):
     movie_id: str = Field(min_length=1, max_length=64)
     nome: str = Field(min_length=1, max_length=120)
     nota: float = Field(ge=0, le=10)
     comentario: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("nota")
+    @classmethod
+    def score_step(cls, value: float) -> float:
+        scaled = round(value * 10)
+        if not 0 <= scaled <= 100 or abs(value * 10 - scaled) > 1e-6:
+            raise ValueError("Score must be from 0 to 10 in steps of 0.1")
+        return scaled / 10
 
 
 class ReviewCreated(MovieReviewRead):

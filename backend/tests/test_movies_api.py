@@ -60,6 +60,78 @@ async def test_create_review_updates_summary(client) -> None:
     assert payload["average_rating"] == 9.5
     assert len(payload["reviews"]) == 1
 
+    rejected = await client.post(
+        "/api/v1/reviews",
+        json={
+            "movie_id": "movie-2",
+            "nome": "Carla",
+            "nota": 9.75,
+            "comentario": "Fora do passo.",
+        },
+    )
+    assert rejected.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_movie_filters_combine_genres_and_years(client) -> None:
+    both = await client.get("/api/v1/movies", params=[("genres", "Thriller"), ("genres", "Science Fiction")])
+    assert both.status_code == 200
+    assert both.json()["total"] == 2
+
+    exact = await client.get("/api/v1/movies", params={"year": 1999})
+    assert exact.status_code == 200
+    assert [item["titulo"] for item in exact.json()["items"]] == ["Matrix"]
+
+    starting = await client.get("/api/v1/movies", params={"year_from": 2000})
+    assert starting.status_code == 200
+    assert [item["titulo"] for item in starting.json()["items"]] == ["Memento"]
+
+    ending = await client.get("/api/v1/movies", params={"year_to": 1999, "genres": "Thriller"})
+    assert ending.status_code == 200
+    assert [item["titulo"] for item in ending.json()["items"]] == ["Matrix"]
+
+
+@pytest.mark.asyncio
+async def test_home_lists_genres_top_rated_and_activity(client) -> None:
+    genres = await client.get("/api/v1/genres")
+    assert genres.status_code == 200
+    names = [item["nome_genero"] for item in genres.json()]
+    assert names == ["Science Fiction", "Thriller"]
+
+    by_genre = await client.get("/api/v1/movies", params={"genre": "science fiction"})
+    assert by_genre.status_code == 200
+    payload = by_genre.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["titulo"] == "Matrix"
+
+    below_minimum = await client.get("/api/v1/movies", params={"sort": "rating", "limit": 2})
+    assert below_minimum.status_code == 200
+    assert below_minimum.json()["total"] == 0
+
+    created = await client.post(
+        "/api/v1/reviews",
+        json={
+            "movie_id": "movie-1",
+            "nome": "Diana",
+            "nota": 9.0,
+            "comentario": "Terceira avaliação.",
+        },
+    )
+    assert created.status_code == 201
+
+    top_rated = await client.get("/api/v1/movies", params={"sort": "rating", "limit": 2})
+    assert top_rated.status_code == 200
+    payload = top_rated.json()
+    assert payload["total"] == 1
+    assert [item["titulo"] for item in payload["items"]] == ["Matrix"]
+
+    activity = await client.get("/api/v1/reviews", params={"limit": 2})
+    assert activity.status_code == 200
+    reviews = activity.json()
+    assert len(reviews) == 2
+    assert {item["titulo"] for item in reviews} == {"Matrix"}
+    assert {item["nome"] for item in reviews} == {"Ana", "Bruno"}
+
 
 @pytest.mark.asyncio
 async def test_movie_crud_flow(client) -> None:

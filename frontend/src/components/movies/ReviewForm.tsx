@@ -38,8 +38,9 @@ export function ReviewForm({ movieId }: ReviewFormProps) {
     const nome = name.trim();
     const comentario = comment.trim();
     const nota = Number(score);
-    if (!nome || !comentario || Number.isNaN(nota) || nota < 0 || nota > 10) {
-      setError("Add a name, a score from 0 to 10, and a review.");
+    const stepped = Math.round(nota * 10) / 10;
+    if (!nome || !comentario || Number.isNaN(nota) || nota < 0 || nota > 10 || Math.abs(nota - stepped) > 1e-6) {
+      setError("Add a name, a score from 0 to 10 in steps of 0.1, and a review.");
       return;
     }
     setError(null);
@@ -61,7 +62,7 @@ export function ReviewForm({ movieId }: ReviewFormProps) {
                 i
               </button>
               <span id="score-tip" className={styles.tip} role="tooltip">
-                0 to 10, in steps of 0.5.
+                0 to 10, in steps of 0.1.
               </span>
             </span>
           </div>
@@ -70,7 +71,7 @@ export function ReviewForm({ movieId }: ReviewFormProps) {
             type="number"
             min={0}
             max={10}
-            step={0.5}
+            step={0.1}
             value={score}
             onChange={(event) => setScore(event.target.value)}
             required

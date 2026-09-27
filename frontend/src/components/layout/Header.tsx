@@ -3,6 +3,21 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Header.module.css";
 
 const SEARCH_DELAY_MS = 300;
+const KEPT_FILTERS = ["genres", "genre", "year", "year_from", "year_to", "sort"];
+
+function catalogSearch(current: URLSearchParams, nextQuery: string): string {
+  const params = new URLSearchParams();
+  if (nextQuery) {
+    params.set("q", nextQuery);
+  }
+  for (const key of KEPT_FILTERS) {
+    for (const value of current.getAll(key)) {
+      params.append(key, value);
+    }
+  }
+  const search = params.toString();
+  return search ? `/movies?${search}` : "/movies";
+}
 
 export function Header() {
   const navigate = useNavigate();
@@ -20,15 +35,10 @@ export function Header() {
       return;
     }
     const handle = window.setTimeout(() => {
-      const params = new URLSearchParams();
-      if (nextQuery) {
-        params.set("q", nextQuery);
-      }
-      const search = params.toString();
-      navigate(search ? `/movies?${search}` : "/movies", { replace: true });
+      navigate(catalogSearch(searchParams, nextQuery), { replace: true });
     }, SEARCH_DELAY_MS);
     return () => window.clearTimeout(handle);
-  }, [draft, query, navigate]);
+  }, [draft, query, navigate, searchParams]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,12 +46,7 @@ export function Header() {
     if (nextQuery === query) {
       return;
     }
-    const params = new URLSearchParams();
-    if (nextQuery) {
-      params.set("q", nextQuery);
-    }
-    const search = params.toString();
-    navigate(search ? `/movies?${search}` : "/movies");
+    navigate(catalogSearch(searchParams, nextQuery));
   }
 
   return (

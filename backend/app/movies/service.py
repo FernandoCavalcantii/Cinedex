@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.movies.models import DimCompany, DimMovie, DimPerson, DimReview, MovieReview
+from app.movies.models import DimCompany, DimGenre, DimMovie, DimPerson, DimReview, MovieReview
 from app.movies.schemas import (
     CompanySummary,
     MovieCreate,
@@ -19,6 +19,7 @@ from app.movies.schemas import (
     PaginatedMovieList,
     PerformanceSummary,
     PersonSummary,
+    RecentActivity,
     ReviewCreate,
     ReviewCreated,
     ReviewSummary,
@@ -41,20 +42,22 @@ def _normalize_sinopse(value: str | None) -> str | None:
 
 
 def _build_average(movie: DimMovie) -> float | None:
+    if movie.reviews:
+        total = sum(review.nota for review in movie.reviews)
+        return round(total / len(movie.reviews), 2)
+
     if movie.reviews_summary and movie.reviews_summary.nota_media_usuarios is not None:
         return movie.reviews_summary.nota_media_usuarios
 
-    if not movie.reviews:
-        return None
-
-    total = sum(review.nota for review in movie.reviews)
-    return round(total / len(movie.reviews), 2)
+    return None
 
 
 def _build_review_count(movie: DimMovie) -> int:
+    if movie.reviews:
+        return len(movie.reviews)
     if movie.reviews_summary:
         return movie.reviews_summary.qtd_avaliacoes_usuarios
-    return len(movie.reviews)
+    return 0
 
 
 def _movie_list_item(movie: DimMovie) -> MovieListItem:
@@ -139,12 +142,44 @@ async def _load_movie_detail(session: AsyncSession, movie_id: str) -> DimMovie:
     return movie
 
 
+async def list_genres(session: AsyncSession) -> list[GenreSummary]:
+    result = await session.execute(select(DimGenre).order_by(DimGenre.nome_genero))
+    return [GenreSummary.model_validate(genre) for genre in result.scalars().all()]
+
+
+async def list_recent_activity(session: AsyncSession, *, limit: int) -> list[RecentActivity]:
+    statement = (
+        select(MovieReview, DimMovie.titulo)
+        .join(DimMovie, DimMovie.sk_movie_id == MovieReview.sk_movie_id)
+        .order_by(MovieReview.created_at.desc(), MovieReview.sk_movie_review_id.desc())
+        .limit(limit)
+    )
+    result = await session.execute(statement)
+    return [
+        RecentActivity(
+            sk_movie_review_id=review.sk_movie_review_id,
+            sk_movie_id=review.sk_movie_id,
+            titulo=title,
+            nome=review.nome,
+            nota=review.nota,
+            created_at=review.created_at,
+        )
+        for review, title in result.all()
+    ]
+
+
 async def list_movies(
     session: AsyncSession,
     *,
     skip: int,
     limit: int,
     search: str | None = None,
+    genre: str | None = None,
+    genres: list[str] | None = None,
+    year: int | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    sort: str = "title",
 ) -> PaginatedMovieList:
     filters = []
     normalized_search = search.strip() if search else None
@@ -158,7 +193,48 @@ async def list_movies(
             )
         )
 
+    genre_names = []
+    if genre and genre.strip():
+        genre_names.append(genre.strip())
+    for name in genres or []:
+        cleaned = name.strip()
+        if cleaned and cleaned.casefold() not in {item.casefold() for item in genre_names}:
+            genre_names.append(cleaned)
+    if genre_names:
+        lowered = [name.casefold() for name in genre_names]
+        filters.append(DimMovie.genres.any(func.lower(DimGenre.nome_genero).in_(lowered)))
+
+    if year_from is not None and year_to is not None and year_from > year_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="year_from must be less than or equal to year_to",
+        )
+    if year is not None:
+        filters.append(DimMovie.ano_lancamento == year)
+    else:
+        if year_from is not None:
+            filters.append(DimMovie.ano_lancamento >= year_from)
+        if year_to is not None:
+            filters.append(DimMovie.ano_lancamento <= year_to)
+
+    ranked_reviews = None
+    if sort == "rating":
+        ranked_reviews = (
+            select(
+                MovieReview.sk_movie_id.label("sk_movie_id"),
+                func.count(MovieReview.sk_movie_review_id).label("qtd"),
+                func.avg(MovieReview.nota).label("media"),
+            )
+            .group_by(MovieReview.sk_movie_id)
+            .having(func.count(MovieReview.sk_movie_review_id) >= 3)
+            .subquery()
+        )
+
     count_statement = select(func.count(DimMovie.sk_movie_id))
+    if ranked_reviews is not None:
+        count_statement = count_statement.join(
+            ranked_reviews, ranked_reviews.c.sk_movie_id == DimMovie.sk_movie_id
+        )
     if filters:
         count_statement = count_statement.where(*filters)
 
@@ -172,10 +248,17 @@ async def list_movies(
             selectinload(DimMovie.reviews_summary),
             selectinload(DimMovie.reviews),
         )
-        .order_by(DimMovie.titulo)
         .offset(skip)
         .limit(limit)
     )
+    if ranked_reviews is not None:
+        statement = statement.join(ranked_reviews, ranked_reviews.c.sk_movie_id == DimMovie.sk_movie_id).order_by(
+            ranked_reviews.c.media.desc(),
+            ranked_reviews.c.qtd.desc(),
+            DimMovie.titulo,
+        )
+    else:
+        statement = statement.order_by(DimMovie.titulo)
     if filters:
         statement = statement.where(*filters)
 

@@ -10,6 +10,11 @@ const PAGE_SIZE = 24;
 
 type MovieCatalogProps = {
   search?: string;
+  genres?: string[];
+  year?: number;
+  yearFrom?: number;
+  yearTo?: number;
+  sort?: "title" | "rating";
   page: number;
   onPageChange: (page: number) => void;
 };
@@ -21,11 +26,56 @@ function catalogErrorMessage(error: unknown): string {
   return "Could not reach the API.";
 }
 
-export function MovieCatalog({ search, page, onPageChange }: MovieCatalogProps) {
+function emptyCatalogMessage(search?: string, filtered?: boolean): string {
+  if (search) {
+    return `No movies found for “${search}”.`;
+  }
+  if (filtered) {
+    return "No movies match these filters.";
+  }
+  return "No movies in the catalog.";
+}
+
+export function MovieCatalog({
+  search,
+  genres = [],
+  year,
+  yearFrom,
+  yearTo,
+  sort = "title",
+  page,
+  onPageChange,
+}: MovieCatalogProps) {
   const skip = (page - 1) * PAGE_SIZE;
+  const filtered = genres.length > 0 || year !== undefined || yearFrom !== undefined || yearTo !== undefined;
   const movies = useQuery({
-    queryKey: ["movies", { skip, limit: PAGE_SIZE, search: search ?? "" }],
-    queryFn: ({ signal }) => listMovies({ skip, limit: PAGE_SIZE, search }, signal),
+    queryKey: [
+      "movies",
+      {
+        skip,
+        limit: PAGE_SIZE,
+        search: search ?? "",
+        genres,
+        year: year ?? "",
+        yearFrom: yearFrom ?? "",
+        yearTo: yearTo ?? "",
+        sort,
+      },
+    ],
+    queryFn: ({ signal }) =>
+      listMovies(
+        {
+          skip,
+          limit: PAGE_SIZE,
+          search,
+          genres,
+          year,
+          year_from: yearFrom,
+          year_to: yearTo,
+          sort: sort === "rating" ? "rating" : undefined,
+        },
+        signal,
+      ),
   });
 
   const total = movies.data?.total ?? 0;
@@ -44,7 +94,7 @@ export function MovieCatalog({ search, page, onPageChange }: MovieCatalogProps) 
 
       {movies.isSuccess && total === 0 ? (
         <p className={styles.status}>
-          {search ? `No movies found for “${search}”.` : "No movies in the catalog."}
+          {emptyCatalogMessage(search, filtered)}
         </p>
       ) : null}
 

@@ -147,6 +147,7 @@ type PosterMarkProps = {
   year?: number | null;
   genres?: string[];
   duration?: number | null;
+  placement?: "card" | "detail";
 };
 
 function titleHash(value: string): number {
@@ -464,7 +465,7 @@ function ProjectorArt({
   );
 }
 
-export function PosterMark({ title, year, genres = [], duration }: PosterMarkProps) {
+export function PosterMark({ title, year, genres = [], duration, placement = "detail" }: PosterMarkProps) {
   const seed = titleHash(title);
   const model = MODELS[seed % MODELS.length];
   const theme = THEMES[seed % THEMES.length];
@@ -483,7 +484,7 @@ export function PosterMark({ title, year, genres = [], duration }: PosterMarkPro
   } as CSSProperties;
 
   return (
-    <span className={styles.mark} style={style}>
+    <span className={placement === "card" ? `${styles.mark} ${styles.cardMark}` : styles.mark} style={style}>
       {model === "reel" ? <FilmReelArt seed={seed} theme={theme} /> : null}
       {model === "rays" ? <ProjectorArt seed={seed} theme={theme} fromLeft={false} showClapper={false} /> : null}
       {model === "clapper" ? <ProjectorArt seed={seed} theme={theme} fromLeft showClapper /> : null}

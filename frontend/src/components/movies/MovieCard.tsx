@@ -47,8 +47,8 @@ export function MovieCard({ movie }: MovieCardProps) {
           <PosterMark
             title={movie.titulo}
             year={movie.ano_lancamento}
-            genres={movie.genres.map((genre) => genre.nome_genero)}
             duration={movie.duracao_minutos}
+            placement="card"
           />
         )}
         <span className={styles.overlay}>

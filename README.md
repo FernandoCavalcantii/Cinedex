@@ -79,14 +79,16 @@ npm install
 npm run dev
 ```
 
-O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca filtra `/movies?q=...` depois de uma pausa curta, e o Enter confirma na hora. All Movies pagina o catálogo de 24 em 24. O clique no card abre `/movies/{id}`, e o botão Back volta à lista na mesma página. Sem pôster, o card e o detalhe mostram um cartaz gerado: um de três desenhos e uma de dez cores, com a marca do Cinedex, o ano, até dois gêneros e a duração (`15min`, `1h 12min`). O desenho fica atrás desse texto. A duração usa `min` minúsculo também no detalhe e no hover do card. Sem imagem de fundo, o detalhe usa um fundo desenhado do Cinedex. Nessa página dá para gravar uma avaliação: nome, nota de 0 a 10 (de 0.5 em 0.5) e resenha. A média e a lista atualizam na hora.
+O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A home também traz os filmes com maior média, os gêneros (cada um abre All Movies com o gênero marcado) e as avaliações mais recentes. Em All Movies, Filters combina um ou mais gêneros com o ano: um ano exato, a partir de um ano, ou até um ano. A busca dos filmes só acontece no Apply Filters, e o ano exato não se mistura com From/To. A seleção aplicada fica na URL até ser desligada. A busca filtra `/movies?q=...` depois de uma pausa curta, e o Enter confirma na hora. All Movies pagina o catálogo de 24 em 24. O clique no card abre `/movies/{id}`, e o botão Back volta à lista na mesma página. Sem pôster, o card e o detalhe mostram um cartaz gerado: um de três desenhos e uma de dez cores, com a marca do Cinedex, o ano e a duração (`15min`, `1h 12min`). No card, o gênero aparece só no hover, o ano e o título ficam um pouco mais altos, a linha entre o título e a duração fica no meio, e essa duração usa uma fonte um pouco maior. No detalhe, o cartaz ainda mostra até dois gêneros. O desenho fica atrás desse texto. A duração usa `min` minúsculo também no detalhe e no hover do card. Sem imagem de fundo, o detalhe usa um fundo desenhado do Cinedex. Nessa página dá para gravar uma avaliação: nome, nota de 0 a 10 (de 0.1 em 0.1) e resenha. A média e a lista atualizam na hora.
 
 Na carga, `normalize_catalog_title` desfaz aspas dobradas de escape do CSV só no título do filme. O arquivo original não muda, e um título criado pela API não passa por essa regra.
 
 ## API do catalogo
 
 A Fase 2 do backend ja expõe os seguintes endpoints na versao `v1`:
-- `GET /api/v1/movies` para listagem paginada e busca;
+- `GET /api/v1/movies` para listagem paginada, busca, filtro por um ou mais gêneros (`genre`, `genres`), ano (`year`, `year_from`, `year_to`) e ordem por nota (`sort=rating`);
+- `GET /api/v1/genres` para a lista de gêneros;
+- `GET /api/v1/reviews` para as avaliações mais recentes;
 - `GET /api/v1/movies/{id}` para detalhe completo;
 - `POST /api/v1/movies` para cadastro;
 - `PUT /api/v1/movies/{id}` para atualização;

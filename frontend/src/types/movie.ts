@@ -38,6 +38,15 @@ export type PersonSummary = {
   tipo_pessoa: string;
 };
 
+export type RecentActivity = {
+  sk_movie_review_id: string;
+  sk_movie_id: string;
+  titulo: string;
+  nome: string;
+  nota: number;
+  created_at: string;
+};
+
 export type MovieReview = {
   sk_movie_review_id: string;
   sk_movie_id: string;

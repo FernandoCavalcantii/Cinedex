@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { DragEvent, MouseEvent, PointerEvent, useEffect, useRef, useState } from "react";
+import { DragEvent, MouseEvent, PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../../services/api";
 import { listMovies } from "../../services/movies";
@@ -11,7 +11,11 @@ type MovieStripProps = {
   title: string;
   limit?: number;
   search?: string;
+  genre?: string;
+  sort?: "title" | "rating";
   viewAllTo?: string;
+  showTotal?: boolean;
+  info?: string;
 };
 
 function catalogErrorMessage(error: unknown): string {
@@ -28,10 +32,21 @@ const PAUSE_MS = 50;
 const MIN_FLICK = 0.12;
 const DECAY_PER_MS = 0.0024;
 
-export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripProps) {
+export function MovieStrip({
+  title,
+  limit = 12,
+  search,
+  genre,
+  sort = "title",
+  viewAllTo,
+  showTotal = true,
+  info,
+}: MovieStripProps) {
+  const infoId = useId();
   const movies = useQuery({
-    queryKey: ["movies", { limit, search: search ?? "" }],
-    queryFn: ({ signal }) => listMovies({ limit, search }, signal),
+    queryKey: ["movies", { limit, search: search ?? "", genre: genre ?? "", sort }],
+    queryFn: ({ signal }) =>
+      listMovies({ limit, search, genre, sort: sort === "rating" ? "rating" : undefined }, signal),
   });
 
   const total = movies.data?.total ?? null;
@@ -175,8 +190,20 @@ export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripP
     <section className={styles.section}>
       <div className={styles.header}>
         <div className={styles.heading}>
-          <h2>{title}</h2>
-          {total !== null ? <span>{total.toLocaleString("en-US")} titles</span> : null}
+          <span className={styles.titleGroup}>
+            <h2>{title}</h2>
+            {info ? (
+              <span className={styles.hint}>
+                <button type="button" className={styles.info} aria-label={`About ${title}`} aria-describedby={infoId}>
+                  i
+                </button>
+                <span id={infoId} className={styles.tip} role="tooltip">
+                  {info}
+                </span>
+              </span>
+            ) : null}
+          </span>
+          {showTotal && total !== null ? <span>{total.toLocaleString("en-US")} titles</span> : null}
         </div>
         {viewAllTo ? (
           <Link className={styles.viewAll} to={viewAllTo}>

@@ -129,3 +129,15 @@
   font-weight: 500;
   letter-spacing: 0.06em;
 }
+
+.cardMark .title {
+  margin-bottom: 15px;
+}
+
+.cardMark .rule {
+  margin-bottom: 15px;
+}
+
+.cardMark .duration {
+  font-size: 11px;
+}

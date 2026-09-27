@@ -1,6 +1,6 @@
 const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
 
-type QueryValue = string | number | boolean | null | undefined;
+type QueryValue = string | number | boolean | string[] | null | undefined;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -26,7 +26,13 @@ export async function apiGet<T>(
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== null && value !== "") {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item !== "") {
+            url.searchParams.append(key, item);
+          }
+        }
+      } else if (value !== undefined && value !== null && value !== "") {
         url.searchParams.set(key, String(value));
       }
     }
