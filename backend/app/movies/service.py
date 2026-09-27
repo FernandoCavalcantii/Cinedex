@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
@@ -142,6 +143,62 @@ async def _load_movie_detail(session: AsyncSession, movie_id: str) -> DimMovie:
     return movie
 
 
+async def _genres_by_name(session: AsyncSession, names: list[str]) -> list[DimGenre]:
+    wanted: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        cleaned = name.strip()
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            seen.add(key)
+            wanted.append(cleaned)
+    if not wanted:
+        return []
+
+    result = await session.execute(
+        select(DimGenre).where(func.lower(DimGenre.nome_genero).in_([name.casefold() for name in wanted]))
+    )
+    found = list(result.scalars().all())
+    found_keys = {genre.nome_genero.casefold() for genre in found}
+    missing = [name for name in wanted if name.casefold() not in found_keys]
+    if missing:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Unknown genre")
+    return found
+
+
+async def _directors_by_name(session: AsyncSession, raw: str | None) -> list[DimPerson]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for part in (raw or "").split(","):
+        cleaned = part.strip()
+        key = cleaned.casefold()
+        if not cleaned or key in seen:
+            continue
+        if len(cleaned) > 255:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Director name is too long")
+        seen.add(key)
+        names.append(cleaned)
+
+    people: list[DimPerson] = []
+    for name in names:
+        existing = await session.scalar(
+            select(DimPerson).where(
+                func.lower(DimPerson.nome_pessoa) == name.casefold(),
+                DimPerson.tipo_pessoa == "Diretor",
+            )
+        )
+        if existing is None:
+            existing = DimPerson(nome_pessoa=name, tipo_pessoa="Diretor")
+            session.add(existing)
+        people.append(existing)
+    return people
+
+
+def _replace_directors(movie: DimMovie, directors: list[DimPerson]) -> None:
+    movie.people = [person for person in movie.people if person.tipo_pessoa != "Diretor"]
+    movie.people.extend(directors)
+
+
 async def list_genres(session: AsyncSession) -> list[GenreSummary]:
     result = await session.execute(select(DimGenre).order_by(DimGenre.nome_genero))
     return [GenreSummary.model_validate(genre) for genre in result.scalars().all()]
@@ -206,7 +263,7 @@ async def list_movies(
 
     if year_from is not None and year_to is not None and year_from > year_to:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="year_from must be less than or equal to year_to",
         )
     if year is not None:
@@ -281,8 +338,11 @@ async def get_movie(session: AsyncSession, movie_id: str) -> MovieDetail:
 
 
 async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDetail:
+    genres = await _genres_by_name(session, movie_in.generos)
+    directors = await _directors_by_name(session, movie_in.diretor)
+    identifier = (movie_in.id_filme or "").strip() or f"local-{uuid4().hex[:16]}"
     movie = DimMovie(
-        id_filme=movie_in.id_filme,
+        id_filme=identifier,
         titulo=movie_in.titulo,
         data_lancamento=movie_in.data_lancamento,
         ano_lancamento=movie_in.ano_lancamento,
@@ -292,6 +352,8 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
         url_poster=movie_in.url_poster,
         url_backdrop=movie_in.url_backdrop,
     )
+    movie.genres = genres
+    movie.people = directors
     session.add(movie)
 
     try:
@@ -309,10 +371,16 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
 async def update_movie(session: AsyncSession, movie_id: str, movie_in: MovieUpdate) -> MovieDetail:
     movie = await _load_movie_detail(session, movie_id)
     update_data = movie_in.model_dump(exclude_unset=True)
+    genres = update_data.pop("generos", None)
+    director = update_data.pop("diretor", None)
     if "sinopse" in update_data:
         update_data["sinopse"] = _normalize_sinopse(update_data["sinopse"])
     for field, value in update_data.items():
         setattr(movie, field, value)
+    if genres is not None:
+        movie.genres = await _genres_by_name(session, genres)
+    if director is not None:
+        _replace_directors(movie, await _directors_by_name(session, director))
 
     try:
         await session.commit()

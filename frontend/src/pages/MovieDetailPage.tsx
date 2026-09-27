@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
@@ -7,7 +7,7 @@ import { MoviePlaceholderBg } from "../components/movies/MoviePlaceholderBg";
 import { PosterMark } from "../components/movies/PosterMark";
 import { ReviewForm } from "../components/movies/ReviewForm";
 import { ApiError } from "../services/api";
-import { getMovie } from "../services/movies";
+import { deleteMovie, getMovie } from "../services/movies";
 import type { MovieDetail, PersonSummary } from "../types/movie";
 import styles from "./MovieDetailPage.module.css";
 
@@ -48,6 +48,20 @@ function namesFor(people: PersonSummary[], role: string): string[] {
 }
 
 function MovieHero({ movie }: { movie: MovieDetail }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const removal = useMutation({
+    mutationFn: () => deleteMovie(movie.sk_movie_id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["movies"] });
+      navigate("/movies");
+    },
+    onError: (caught: unknown) => {
+      setDeleteError(caught instanceof ApiError ? caught.message : "Could not reach the API.");
+    },
+  });
   const [posterFailed, setPosterFailed] = useState(false);
   const posterUrl = posterFailed ? null : movie.url_poster;
   const duration = formatDuration(movie.duracao_minutos);
@@ -107,9 +121,32 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
           {movie.companies.length > 0 ? (
             <p className={styles.studios}>{movie.companies.map((company) => company.nome_produtora).join(", ")}</p>
           ) : null}
-          <Link className={styles.edit} to={`/movies/${movie.sk_movie_id}/edit`}>
-            Edit movie
-          </Link>
+          <div className={styles.manage}>
+            <Link className={styles.edit} to={`/movies/${movie.sk_movie_id}/edit`}>
+              Edit movie
+            </Link>
+            {confirmDelete ? (
+              <span className={styles.confirm}>
+                Delete this movie?
+                <button
+                  type="button"
+                  className={styles.remove}
+                  disabled={removal.isPending}
+                  onClick={() => removal.mutate()}
+                >
+                  Delete
+                </button>
+                <button type="button" className={styles.quiet} onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button type="button" className={styles.remove} onClick={() => setConfirmDelete(true)}>
+                Delete movie
+              </button>
+            )}
+          </div>
+          {deleteError ? <p className={styles.deleteError}>{deleteError}</p> : null}
         </div>
       </div>
 

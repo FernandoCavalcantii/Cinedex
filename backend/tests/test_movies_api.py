@@ -171,3 +171,42 @@ async def test_movie_crud_flow(client) -> None:
 
     not_found_response = await client.get(f"/api/v1/movies/{movie_id}")
     assert not_found_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_movie_form_saves_director_and_genres(client) -> None:
+    created = await client.post(
+        "/api/v1/movies",
+        json={
+            "titulo": "Local Film",
+            "ano_lancamento": 2024,
+            "sinopse": "Feito no painel.",
+            "generos": ["Thriller"],
+            "diretor": "Novo Diretor",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["id_filme"].startswith("local-")
+    assert [genre["nome_genero"] for genre in payload["genres"]] == ["Thriller"]
+    assert [person["nome_pessoa"] for person in payload["people"] if person["tipo_pessoa"] == "Diretor"] == [
+        "Novo Diretor"
+    ]
+
+    unknown = await client.post(
+        "/api/v1/movies",
+        json={"titulo": "Sem gênero", "generos": ["Not A Genre"]},
+    )
+    assert unknown.status_code == 422
+
+    updated = await client.put(
+        "/api/v1/movies/movie-1",
+        json={"generos": ["Science Fiction"], "diretor": "Lilly Wachowski"},
+    )
+    assert updated.status_code == 200
+    body = updated.json()
+    assert [genre["nome_genero"] for genre in body["genres"]] == ["Science Fiction"]
+    directors = [person["nome_pessoa"] for person in body["people"] if person["tipo_pessoa"] == "Diretor"]
+    actors = [person["nome_pessoa"] for person in body["people"] if person["tipo_pessoa"] == "Ator"]
+    assert directors == ["Lilly Wachowski"]
+    assert actors == ["Keanu Reeves"]

@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./api";
+import { apiDelete, apiGet, apiPost, apiPut } from "./api";
 import type { GenreSummary, MovieDetail, MovieReview, PaginatedMovies, RecentActivity } from "../types/movie";
 
 type ListMoviesQuery = {
@@ -41,4 +41,29 @@ export type ReviewInput = {
 
 export function createReview(review: ReviewInput): Promise<MovieReview> {
   return apiPost<MovieReview>("reviews", review);
+}
+
+export type MovieInput = {
+  titulo: string;
+  data_lancamento: string | null;
+  ano_lancamento: number | null;
+  duracao_minutos: number | null;
+  status_filme: string | null;
+  url_poster: string | null;
+  url_backdrop: string | null;
+  sinopse: string | null;
+  generos: string[];
+  diretor: string;
+};
+
+export function createMovie(movie: MovieInput): Promise<MovieDetail> {
+  return apiPost<MovieDetail>("movies", movie);
+}
+
+export function updateMovie(movieId: string, movie: MovieInput): Promise<MovieDetail> {
+  return apiPut<MovieDetail>(`movies/${movieId}`, movie);
+}
+
+export function deleteMovie(movieId: string): Promise<void> {
+  return apiDelete(`movies/${movieId}`);
 }

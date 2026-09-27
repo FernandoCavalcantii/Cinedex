@@ -1,0 +1,7 @@
+.lead {
+  max-width: 640px;
+  margin: 16px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}

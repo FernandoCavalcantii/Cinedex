@@ -68,7 +68,7 @@ class MovieBase(BaseModel):
     titulo: str = Field(min_length=1, max_length=500)
     data_lancamento: date | None = None
     ano_lancamento: int | None = Field(default=None, ge=1888, le=2100)
-    duracao_minutos: int | None = Field(default=None, ge=1)
+    duracao_minutos: int | None = Field(default=None, ge=1, le=100000)
     status_filme: str | None = Field(default=None, max_length=50)
     sinopse: str | None = Field(default=None, max_length=4000)
     url_poster: str | None = Field(default=None, max_length=2048)
@@ -76,7 +76,9 @@ class MovieBase(BaseModel):
 
 
 class MovieCreate(MovieBase):
-    pass
+    id_filme: str | None = Field(default=None, min_length=1, max_length=50)
+    generos: list[str] = Field(default_factory=list)
+    diretor: str | None = Field(default=None, max_length=2000)
 
 
 class MovieUpdate(BaseModel):
@@ -84,11 +86,13 @@ class MovieUpdate(BaseModel):
     titulo: str | None = Field(default=None, min_length=1, max_length=500)
     data_lancamento: date | None = None
     ano_lancamento: int | None = Field(default=None, ge=1888, le=2100)
-    duracao_minutos: int | None = Field(default=None, ge=1)
+    duracao_minutos: int | None = Field(default=None, ge=1, le=100000)
     status_filme: str | None = Field(default=None, max_length=50)
     sinopse: str | None = Field(default=None, max_length=4000)
     url_poster: str | None = Field(default=None, max_length=2048)
     url_backdrop: str | None = Field(default=None, max_length=2048)
+    generos: list[str] | None = None
+    diretor: str | None = Field(default=None, max_length=2000)
 
 
 class MovieListItem(MovieBase):

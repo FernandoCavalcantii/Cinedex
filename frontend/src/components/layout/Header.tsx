@@ -85,10 +85,6 @@ export function Header() {
             <span className={styles.profileRole}>Super User</span>
           </span>
         </div>
-        <Link className={styles.cta} to="/movies/new">
-          <span aria-hidden="true">+</span>
-          Add New Movie
-        </Link>
       </div>
     </header>
   );

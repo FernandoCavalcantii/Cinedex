@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { Pagination } from "../layout/Pagination";
 import { Button } from "../ui/Button";
 import { ApiError } from "../../services/api";
@@ -17,6 +18,8 @@ type MovieCatalogProps = {
   sort?: "title" | "rating";
   page: number;
   onPageChange: (page: number) => void;
+  toolbarStart?: ReactNode;
+  toolbarEnd?: ReactNode;
 };
 
 function catalogErrorMessage(error: unknown): string {
@@ -45,6 +48,8 @@ export function MovieCatalog({
   sort = "title",
   page,
   onPageChange,
+  toolbarStart,
+  toolbarEnd,
 }: MovieCatalogProps) {
   const skip = (page - 1) * PAGE_SIZE;
   const filtered = genres.length > 0 || year !== undefined || yearFrom !== undefined || yearTo !== undefined;
@@ -83,6 +88,11 @@ export function MovieCatalog({
 
   return (
     <section className={styles.section}>
+      <div className={styles.bar}>
+        <div className={styles.barStart}>{toolbarStart}</div>
+        <p className={styles.count}>{movies.isSuccess ? `${total.toLocaleString("pt-BR")} titles` : ""}</p>
+        <div className={styles.barEnd}>{toolbarEnd}</div>
+      </div>
       {movies.isPending ? <p className={styles.status}>Loading movies…</p> : null}
 
       {movies.isError ? (
@@ -106,18 +116,15 @@ export function MovieCatalog({
       ) : null}
 
       {movies.isSuccess && movies.data.items.length > 0 ? (
-        <>
-          <p className={styles.count}>{total.toLocaleString("en-US")} titles</p>
-          <div className={styles.catalog}>
-            <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
-            <div className={styles.grid}>
-              {movies.data.items.map((movie) => (
-                <MovieCard key={movie.sk_movie_id} movie={movie} />
-              ))}
-            </div>
-            <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
+        <div className={styles.catalog}>
+          <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
+          <div className={styles.grid}>
+            {movies.data.items.map((movie) => (
+              <MovieCard key={movie.sk_movie_id} movie={movie} />
+            ))}
           </div>
-        </>
+          <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
+        </div>
       ) : null}
     </section>
   );

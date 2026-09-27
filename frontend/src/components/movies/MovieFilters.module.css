@@ -1,6 +1,5 @@
 .wrap {
   position: relative;
-  margin-top: 22px;
 }
 
 .trigger {
@@ -19,6 +18,18 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.trigger:hover {
+  border-color: var(--color-neon);
+  color: var(--color-neon);
+}
+
+.triggerOn:hover,
+.trigger[aria-expanded="true"]:hover {
+  background: var(--color-neon);
+  color: #141517;
 }
 
 .triggerOn,

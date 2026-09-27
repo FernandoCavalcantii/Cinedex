@@ -189,27 +189,27 @@ export function MovieStrip({
   return (
     <section className={styles.section}>
       <div className={styles.header}>
-        <div className={styles.heading}>
-          <span className={styles.titleGroup}>
-            <h2>{title}</h2>
-            {info ? (
-              <span className={styles.hint}>
-                <button type="button" className={styles.info} aria-label={`About ${title}`} aria-describedby={infoId}>
-                  i
-                </button>
-                <span id={infoId} className={styles.tip} role="tooltip">
-                  {info}
-                </span>
+        <div className={styles.titleGroup}>
+          <h2>{title}</h2>
+          {info ? (
+            <span className={styles.hint}>
+              <button type="button" className={styles.info} aria-label={`About ${title}`} aria-describedby={infoId}>
+                i
+              </button>
+              <span id={infoId} className={styles.tip} role="tooltip">
+                {info}
               </span>
-            ) : null}
-          </span>
-          {showTotal && total !== null ? <span>{total.toLocaleString("en-US")} titles</span> : null}
+            </span>
+          ) : null}
         </div>
+        {showTotal && total !== null ? <p className={styles.count}>{total.toLocaleString("pt-BR")} titles</p> : <span />}
         {viewAllTo ? (
           <Link className={styles.viewAll} to={viewAllTo}>
             View all →
           </Link>
-        ) : null}
+        ) : (
+          <span />
+        )}
       </div>
 
       {movies.isPending ? <p className={styles.status}>Loading movies…</p> : null}
