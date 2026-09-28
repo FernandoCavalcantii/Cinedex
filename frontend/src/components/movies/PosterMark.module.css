@@ -1,14 +1,143 @@
 .mark {
-  display: grid;
+  --cover-angle: 145deg;
+  --cover-from: #0c0505;
+  --cover-to: #280f10;
+  --cover-accent: #fb7185;
+  --cover-year: #fb7185;
+  --cover-tag-bg: rgba(251, 113, 133, 0.15);
+  --cover-tag-text: #fd9faa;
+  --cover-glow: rgba(251, 113, 133, 0.2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   height: 100%;
-  place-items: center;
-  color: var(--color-neon);
+  overflow: hidden;
+  container-type: size;
+  background: linear-gradient(var(--cover-angle), var(--cover-from) 0%, var(--cover-to) 100%);
+  color: #fff;
   font-family: var(--font-display);
-  font-size: 64px;
+  user-select: none;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, transparent 0%, transparent 18%, #000 30%, #000 100%);
+}
+
+.copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px 14px 10px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lockup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.word {
+  color: #4ade80;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.presents {
+  padding-left: 22px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 400;
   letter-spacing: 0.06em;
-  line-height: 1;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(57, 231, 95, 0.16), transparent 58%),
-    var(--color-card);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.year {
+  margin-bottom: 5px;
+  color: var(--cover-year);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-bottom: 10px;
+  color: #fff;
+  font-size: clamp(16px, 12cqw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+  text-transform: uppercase;
+  text-shadow: 0 0 32px var(--cover-glow), 0 2px 10px rgba(0, 0, 0, 0.9);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.rule {
+  height: 1px;
+  margin-bottom: 8px;
+  background: linear-gradient(to right, color-mix(in srgb, var(--cover-accent) 38%, transparent), transparent);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.tag {
+  padding: 2px 6px;
+  border: 0.5px solid color-mix(in srgb, var(--cover-accent) 21%, transparent);
+  border-radius: 2px;
+  background: var(--cover-tag-bg);
+  color: var(--cover-tag-text);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.duration {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.cardMark .title {
+  margin-bottom: 15px;
+}
+
+.cardMark .rule {
+  margin-bottom: 15px;
+}
+
+.cardMark .duration {
+  font-size: 11px;
 }

@@ -1,0 +1,29 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--color-neon);
+  border-radius: 6px;
+  background: rgba(57, 231, 95, 0.14);
+  color: var(--color-neon);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-neon);
+  color: #141517;
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

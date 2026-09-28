@@ -2,8 +2,9 @@ import { NavLink } from "react-router-dom";
 import styles from "./Sidebar.module.css";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", end: true },
+  { to: "/", label: "Discover", end: true },
   { to: "/movies", label: "All Movies", end: true },
+  { to: "/admin", label: "Admin", end: false },
 ];
 
 export function Sidebar() {

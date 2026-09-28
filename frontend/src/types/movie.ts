@@ -38,6 +38,25 @@ export type PersonSummary = {
   tipo_pessoa: string;
 };
 
+export type AdminFeedItem = {
+  kind: "added" | "review";
+  sk_movie_id: string;
+  titulo: string;
+  created_at: string;
+  sk_movie_review_id: string | null;
+  nome: string | null;
+  nota: number | null;
+};
+
+export type RecentActivity = {
+  sk_movie_review_id: string;
+  sk_movie_id: string;
+  titulo: string;
+  nome: string;
+  nota: number;
+  created_at: string;
+};
+
 export type MovieReview = {
   sk_movie_review_id: string;
   sk_movie_id: string;
@@ -51,4 +70,56 @@ export type MovieDetail = MovieListItem & {
   companies: CompanySummary[];
   people: PersonSummary[];
   reviews: MovieReview[];
+};
+
+export type MetricReviewer = {
+  nome: string;
+  review_count: number;
+};
+
+export type MetricRatedMovie = {
+  sk_movie_id: string;
+  titulo: string;
+  average_rating: number;
+  review_count: number;
+};
+
+export type MetricGenreCount = {
+  nome_genero: string;
+  movie_count: number;
+};
+
+export type MetricViewedMovie = {
+  sk_movie_id: string;
+  titulo: string;
+  view_count: number;
+};
+
+export type MetricAttention = {
+  nome_genero: string;
+  duration_seconds: number;
+};
+
+export type MetricSearchTerm = {
+  search_term: string;
+  search_count: number;
+  empty_count: number;
+};
+
+export type CatalogMetrics = {
+  movie_count: number;
+  review_count: number;
+  user_count: number;
+  unreviewed_count: number;
+  average_rating: number | null;
+  reviews_last_7_days: number;
+  movies_added_last_7_days: number;
+  catalog_seconds_today: number;
+  returning_visitors: number;
+  top_reviewers: MetricReviewer[];
+  top_rated: MetricRatedMovie[];
+  genres: MetricGenreCount[];
+  most_viewed: MetricViewedMovie[];
+  attention_by_genre: MetricAttention[];
+  top_searches: MetricSearchTerm[];
 };

@@ -1,15 +1,28 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
-from app.movies.models import DimCompany, DimMovie, DimPerson, DimReview, MovieReview
+from app.movies.models import (
+    CatalogEvent,
+    DimCompany,
+    DimGenre,
+    DimMovie,
+    DimPerson,
+    DimReview,
+    MovieReview,
+    bridge_movie_genre,
+)
 from app.movies.schemas import (
+    AdminFeedItem,
+    CatalogEventCreate,
+    CatalogMetrics,
     CompanySummary,
     MovieCreate,
     MovieDetail,
@@ -19,15 +32,23 @@ from app.movies.schemas import (
     PaginatedMovieList,
     PerformanceSummary,
     PersonSummary,
+    RecentActivity,
     ReviewCreate,
     ReviewCreated,
     ReviewSummary,
     GenreSummary,
+    MetricAttention,
+    MetricGenreCount,
+    MetricRatedMovie,
+    MetricReviewer,
+    MetricSearchTerm,
+    MetricViewedMovie,
 )
 
 
 MISSING_SYNOPSIS = "sem descrição"
 REPLACEMENT_SYNOPSIS = "No synopsis available."
+CATALOG_ACTOR = "catalog-admin"
 
 
 def _coalesce_decimal(value: Decimal | None) -> float | None:
@@ -41,20 +62,22 @@ def _normalize_sinopse(value: str | None) -> str | None:
 
 
 def _build_average(movie: DimMovie) -> float | None:
+    if movie.reviews:
+        total = sum(review.nota for review in movie.reviews)
+        return round(total / len(movie.reviews), 2)
+
     if movie.reviews_summary and movie.reviews_summary.nota_media_usuarios is not None:
         return movie.reviews_summary.nota_media_usuarios
 
-    if not movie.reviews:
-        return None
-
-    total = sum(review.nota for review in movie.reviews)
-    return round(total / len(movie.reviews), 2)
+    return None
 
 
 def _build_review_count(movie: DimMovie) -> int:
+    if movie.reviews:
+        return len(movie.reviews)
     if movie.reviews_summary:
         return movie.reviews_summary.qtd_avaliacoes_usuarios
-    return len(movie.reviews)
+    return 0
 
 
 def _movie_list_item(movie: DimMovie) -> MovieListItem:
@@ -139,12 +162,139 @@ async def _load_movie_detail(session: AsyncSession, movie_id: str) -> DimMovie:
     return movie
 
 
+async def _genres_by_name(session: AsyncSession, names: list[str]) -> list[DimGenre]:
+    wanted: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        cleaned = name.strip()
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            seen.add(key)
+            wanted.append(cleaned)
+    if not wanted:
+        return []
+
+    result = await session.execute(
+        select(DimGenre).where(func.lower(DimGenre.nome_genero).in_([name.casefold() for name in wanted]))
+    )
+    found = list(result.scalars().all())
+    found_keys = {genre.nome_genero.casefold() for genre in found}
+    missing = [name for name in wanted if name.casefold() not in found_keys]
+    if missing:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Unknown genre")
+    return found
+
+
+async def _directors_by_name(session: AsyncSession, raw: str | None) -> list[DimPerson]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for part in (raw or "").split(","):
+        cleaned = part.strip()
+        key = cleaned.casefold()
+        if not cleaned or key in seen:
+            continue
+        if len(cleaned) > 255:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Director name is too long")
+        seen.add(key)
+        names.append(cleaned)
+
+    people: list[DimPerson] = []
+    for name in names:
+        existing = await session.scalar(
+            select(DimPerson).where(
+                func.lower(DimPerson.nome_pessoa) == name.casefold(),
+                DimPerson.tipo_pessoa == "Diretor",
+            )
+        )
+        if existing is None:
+            existing = DimPerson(nome_pessoa=name, tipo_pessoa="Diretor")
+            session.add(existing)
+        people.append(existing)
+    return people
+
+
+def _replace_directors(movie: DimMovie, directors: list[DimPerson]) -> None:
+    movie.people = [person for person in movie.people if person.tipo_pessoa != "Diretor"]
+    movie.people.extend(directors)
+
+
+async def list_genres(session: AsyncSession) -> list[GenreSummary]:
+    result = await session.execute(select(DimGenre).order_by(DimGenre.nome_genero))
+    return [GenreSummary.model_validate(genre) for genre in result.scalars().all()]
+
+
+async def list_admin_feed(session: AsyncSession, *, limit: int) -> list[AdminFeedItem]:
+    review_rows = await session.execute(
+        select(MovieReview, DimMovie.titulo)
+        .join(DimMovie, DimMovie.sk_movie_id == MovieReview.sk_movie_id)
+        .order_by(MovieReview.created_at.desc(), MovieReview.sk_movie_review_id.desc())
+        .limit(limit)
+    )
+    movie_rows = await session.execute(
+        select(CatalogEvent.occurred_at, DimMovie.sk_movie_id, DimMovie.titulo)
+        .join(DimMovie, DimMovie.sk_movie_id == CatalogEvent.sk_movie_id)
+        .where(CatalogEvent.event_type == "movie_created")
+        .order_by(CatalogEvent.occurred_at.desc(), DimMovie.titulo)
+        .limit(limit)
+    )
+    items = [
+        AdminFeedItem(
+            kind="review",
+            sk_movie_review_id=review.sk_movie_review_id,
+            sk_movie_id=review.sk_movie_id,
+            titulo=title,
+            nome=review.nome,
+            nota=review.nota,
+            created_at=review.created_at,
+        )
+        for review, title in review_rows.all()
+    ]
+    items.extend(
+        AdminFeedItem(
+            kind="added",
+            sk_movie_id=movie_id,
+            titulo=title,
+            created_at=occurred_at,
+        )
+        for occurred_at, movie_id, title in movie_rows.all()
+    )
+    items.sort(key=lambda item: item.created_at, reverse=True)
+    return items[:limit]
+
+
+async def list_recent_activity(session: AsyncSession, *, limit: int) -> list[RecentActivity]:
+    statement = (
+        select(MovieReview, DimMovie.titulo)
+        .join(DimMovie, DimMovie.sk_movie_id == MovieReview.sk_movie_id)
+        .order_by(MovieReview.created_at.desc(), MovieReview.sk_movie_review_id.desc())
+        .limit(limit)
+    )
+    result = await session.execute(statement)
+    return [
+        RecentActivity(
+            sk_movie_review_id=review.sk_movie_review_id,
+            sk_movie_id=review.sk_movie_id,
+            titulo=title,
+            nome=review.nome,
+            nota=review.nota,
+            created_at=review.created_at,
+        )
+        for review, title in result.all()
+    ]
+
+
 async def list_movies(
     session: AsyncSession,
     *,
     skip: int,
     limit: int,
     search: str | None = None,
+    genre: str | None = None,
+    genres: list[str] | None = None,
+    year: int | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    sort: str = "title",
 ) -> PaginatedMovieList:
     filters = []
     normalized_search = search.strip() if search else None
@@ -158,7 +308,64 @@ async def list_movies(
             )
         )
 
+    genre_names = []
+    if genre and genre.strip():
+        genre_names.append(genre.strip())
+    for name in genres or []:
+        cleaned = name.strip()
+        if cleaned and cleaned.casefold() not in {item.casefold() for item in genre_names}:
+            genre_names.append(cleaned)
+    if genre_names:
+        lowered = [name.casefold() for name in genre_names]
+        filters.append(DimMovie.genres.any(func.lower(DimGenre.nome_genero).in_(lowered)))
+
+    if year_from is not None and year_to is not None and year_from > year_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="year_from must be less than or equal to year_to",
+        )
+    if year is not None:
+        filters.append(DimMovie.ano_lancamento == year)
+    else:
+        if year_from is not None:
+            filters.append(DimMovie.ano_lancamento >= year_from)
+        if year_to is not None:
+            filters.append(DimMovie.ano_lancamento <= year_to)
+
+    ranked_reviews = None
+    opened = None
+    if sort == "rating":
+        ranked_reviews = (
+            select(
+                MovieReview.sk_movie_id.label("sk_movie_id"),
+                func.count(MovieReview.sk_movie_review_id).label("qtd"),
+                func.avg(MovieReview.nota).label("media"),
+            )
+            .group_by(MovieReview.sk_movie_id)
+            .having(func.count(MovieReview.sk_movie_review_id) >= 3)
+            .subquery()
+        )
+    elif sort == "views":
+        opened = (
+            select(
+                CatalogEvent.sk_movie_id.label("sk_movie_id"),
+                func.count().label("qtd"),
+            )
+            .where(
+                CatalogEvent.event_type == "detail_open",
+                CatalogEvent.sk_movie_id.is_not(None),
+            )
+            .group_by(CatalogEvent.sk_movie_id)
+            .subquery()
+        )
+
     count_statement = select(func.count(DimMovie.sk_movie_id))
+    if ranked_reviews is not None:
+        count_statement = count_statement.join(
+            ranked_reviews, ranked_reviews.c.sk_movie_id == DimMovie.sk_movie_id
+        )
+    elif opened is not None:
+        count_statement = count_statement.join(opened, opened.c.sk_movie_id == DimMovie.sk_movie_id)
     if filters:
         count_statement = count_statement.where(*filters)
 
@@ -172,10 +379,22 @@ async def list_movies(
             selectinload(DimMovie.reviews_summary),
             selectinload(DimMovie.reviews),
         )
-        .order_by(DimMovie.titulo)
         .offset(skip)
         .limit(limit)
     )
+    if ranked_reviews is not None:
+        statement = statement.join(ranked_reviews, ranked_reviews.c.sk_movie_id == DimMovie.sk_movie_id).order_by(
+            ranked_reviews.c.media.desc(),
+            ranked_reviews.c.qtd.desc(),
+            DimMovie.titulo,
+        )
+    elif opened is not None:
+        statement = statement.join(opened, opened.c.sk_movie_id == DimMovie.sk_movie_id).order_by(
+            opened.c.qtd.desc(),
+            DimMovie.titulo,
+        )
+    else:
+        statement = statement.order_by(DimMovie.titulo)
     if filters:
         statement = statement.where(*filters)
 
@@ -198,8 +417,11 @@ async def get_movie(session: AsyncSession, movie_id: str) -> MovieDetail:
 
 
 async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDetail:
+    genres = await _genres_by_name(session, movie_in.generos)
+    directors = await _directors_by_name(session, movie_in.diretor)
+    identifier = (movie_in.id_filme or "").strip() or f"local-{uuid4().hex[:16]}"
     movie = DimMovie(
-        id_filme=movie_in.id_filme,
+        id_filme=identifier,
         titulo=movie_in.titulo,
         data_lancamento=movie_in.data_lancamento,
         ano_lancamento=movie_in.ano_lancamento,
@@ -209,7 +431,17 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
         url_poster=movie_in.url_poster,
         url_backdrop=movie_in.url_backdrop,
     )
+    movie.genres = genres
+    movie.people = directors
     session.add(movie)
+    await session.flush()
+    session.add(
+        CatalogEvent(
+            visitor_id=CATALOG_ACTOR,
+            event_type="movie_created",
+            sk_movie_id=movie.sk_movie_id,
+        )
+    )
 
     try:
         await session.commit()
@@ -226,10 +458,16 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
 async def update_movie(session: AsyncSession, movie_id: str, movie_in: MovieUpdate) -> MovieDetail:
     movie = await _load_movie_detail(session, movie_id)
     update_data = movie_in.model_dump(exclude_unset=True)
+    genres = update_data.pop("generos", None)
+    director = update_data.pop("diretor", None)
     if "sinopse" in update_data:
         update_data["sinopse"] = _normalize_sinopse(update_data["sinopse"])
     for field, value in update_data.items():
         setattr(movie, field, value)
+    if genres is not None:
+        movie.genres = await _genres_by_name(session, genres)
+    if director is not None:
+        _replace_directors(movie, await _directors_by_name(session, director))
 
     try:
         await session.commit()
@@ -284,3 +522,211 @@ async def create_review(session: AsyncSession, review_in: ReviewCreate) -> Revie
     await session.commit()
 
     return ReviewCreated.model_validate(review)
+
+
+async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
+    movie_count = await session.scalar(select(func.count()).select_from(DimMovie)) or 0
+    review_count = await session.scalar(select(func.count()).select_from(MovieReview)) or 0
+    user_count = await session.scalar(select(func.count(func.distinct(MovieReview.nome)))) or 0
+    reviewed = (
+        select(MovieReview.sk_movie_review_id)
+        .where(MovieReview.sk_movie_id == DimMovie.sk_movie_id)
+        .exists()
+    )
+    unreviewed_count = (
+        await session.scalar(select(func.count()).select_from(DimMovie).where(~reviewed)) or 0
+    )
+    average_rating = await session.scalar(select(func.avg(MovieReview.nota)))
+    reviews_last_7_days = (
+        await session.scalar(
+            select(func.count())
+            .select_from(MovieReview)
+            .where(MovieReview.created_at >= text("datetime('now', '-7 days')"))
+        )
+        or 0
+    )
+    movies_added_last_7_days = (
+        await session.scalar(
+            select(func.count(func.distinct(CatalogEvent.sk_movie_id))).where(
+                CatalogEvent.event_type == "movie_created",
+                CatalogEvent.sk_movie_id.is_not(None),
+                CatalogEvent.occurred_at >= text("datetime('now', '-7 days')"),
+            )
+        )
+        or 0
+    )
+
+    reviewer_rows = await session.execute(
+        select(MovieReview.nome, func.count().label("qtd"))
+        .group_by(MovieReview.nome)
+        .order_by(func.count().desc(), MovieReview.nome)
+        .limit(8)
+    )
+    top_reviewers = [
+        MetricReviewer(nome=nome, review_count=int(count)) for nome, count in reviewer_rows.all()
+    ]
+
+    ranked = (
+        select(
+            MovieReview.sk_movie_id.label("sk_movie_id"),
+            func.count(MovieReview.sk_movie_review_id).label("qtd"),
+            func.avg(MovieReview.nota).label("media"),
+        )
+        .group_by(MovieReview.sk_movie_id)
+        .having(func.count(MovieReview.sk_movie_review_id) >= 3)
+        .subquery()
+    )
+    rated_rows = await session.execute(
+        select(DimMovie.sk_movie_id, DimMovie.titulo, ranked.c.media, ranked.c.qtd)
+        .join(ranked, ranked.c.sk_movie_id == DimMovie.sk_movie_id)
+        .order_by(ranked.c.media.desc(), ranked.c.qtd.desc(), DimMovie.titulo)
+        .limit(5)
+    )
+    top_rated = [
+        MetricRatedMovie(
+            sk_movie_id=movie_id,
+            titulo=title,
+            average_rating=float(average),
+            review_count=int(count),
+        )
+        for movie_id, title, average, count in rated_rows.all()
+    ]
+
+    genre_rows = await session.execute(
+        select(DimGenre.nome_genero, func.count(bridge_movie_genre.c.sk_movie_id))
+        .join(bridge_movie_genre, bridge_movie_genre.c.sk_genre_id == DimGenre.sk_genre_id)
+        .group_by(DimGenre.nome_genero)
+        .order_by(func.count(bridge_movie_genre.c.sk_movie_id).desc(), DimGenre.nome_genero)
+    )
+    genres = [
+        MetricGenreCount(nome_genero=name, movie_count=int(count)) for name, count in genre_rows.all()
+    ]
+    no_genre_count = await session.scalar(
+        select(func.count()).select_from(DimMovie).where(~DimMovie.genres.any())
+    )
+    if no_genre_count:
+        missing = MetricGenreCount(nome_genero="No genre", movie_count=int(no_genre_count))
+        insert_at = next(
+            (
+                index
+                for index, genre in enumerate(genres)
+                if genre.movie_count < missing.movie_count
+                or (genre.movie_count == missing.movie_count and genre.nome_genero > missing.nome_genero)
+            ),
+            len(genres),
+        )
+        genres.insert(insert_at, missing)
+
+    viewed_rows = await session.execute(
+        select(DimMovie.sk_movie_id, DimMovie.titulo, func.count().label("qtd"))
+        .join(CatalogEvent, CatalogEvent.sk_movie_id == DimMovie.sk_movie_id)
+        .where(CatalogEvent.event_type == "detail_open")
+        .group_by(DimMovie.sk_movie_id, DimMovie.titulo)
+        .order_by(func.count().desc(), DimMovie.titulo)
+        .limit(5)
+    )
+    most_viewed = [
+        MetricViewedMovie(sk_movie_id=movie_id, titulo=title, view_count=int(count))
+        for movie_id, title, count in viewed_rows.all()
+    ]
+
+    attention_rows = await session.execute(
+        select(DimGenre.nome_genero, func.sum(CatalogEvent.duration_seconds))
+        .join(bridge_movie_genre, bridge_movie_genre.c.sk_genre_id == DimGenre.sk_genre_id)
+        .join(
+            CatalogEvent,
+            (CatalogEvent.sk_movie_id == bridge_movie_genre.c.sk_movie_id)
+            & (CatalogEvent.event_type == "detail_dwell"),
+        )
+        .group_by(DimGenre.nome_genero)
+        .order_by(func.sum(CatalogEvent.duration_seconds).desc(), DimGenre.nome_genero)
+        .limit(8)
+    )
+    attention_by_genre = [
+        MetricAttention(nome_genero=name, duration_seconds=int(seconds or 0))
+        for name, seconds in attention_rows.all()
+        if seconds
+    ]
+
+    catalog_seconds_today = (
+        await session.scalar(
+            select(func.coalesce(func.sum(CatalogEvent.duration_seconds), 0)).where(
+                CatalogEvent.event_type == "catalog_dwell",
+                func.date(CatalogEvent.occurred_at) == func.date("now"),
+            )
+        )
+        or 0
+    )
+
+    search_rows = await session.execute(
+        select(
+            CatalogEvent.search_term,
+            func.count(),
+            func.coalesce(func.sum(case((CatalogEvent.result_count == 0, 1), else_=0)), 0),
+        )
+        .where(CatalogEvent.event_type == "search", CatalogEvent.search_term.is_not(None))
+        .group_by(CatalogEvent.search_term)
+        .order_by(func.count().desc(), CatalogEvent.search_term)
+        .limit(8)
+    )
+    top_searches = [
+        MetricSearchTerm(search_term=term, search_count=int(count), empty_count=int(empty or 0))
+        for term, count, empty in search_rows.all()
+        if term
+    ]
+
+    earlier = aliased(CatalogEvent)
+    later = aliased(CatalogEvent)
+    returning_visitors = (
+        await session.scalar(
+            select(func.count(func.distinct(earlier.visitor_id)))
+            .select_from(earlier)
+            .join(
+                later,
+                (earlier.visitor_id == later.visitor_id)
+                & (earlier.event_type != "movie_created")
+                & (later.event_type != "movie_created")
+                & (func.date(later.occurred_at) == func.date(earlier.occurred_at, "+1 day")),
+            )
+        )
+        or 0
+    )
+
+    return CatalogMetrics(
+        movie_count=int(movie_count),
+        review_count=int(review_count),
+        user_count=int(user_count),
+        unreviewed_count=int(unreviewed_count),
+        average_rating=None if average_rating is None else float(average_rating),
+        reviews_last_7_days=int(reviews_last_7_days),
+        movies_added_last_7_days=int(movies_added_last_7_days),
+        catalog_seconds_today=int(catalog_seconds_today),
+        returning_visitors=int(returning_visitors),
+        top_reviewers=top_reviewers,
+        top_rated=top_rated,
+        genres=genres,
+        most_viewed=most_viewed,
+        attention_by_genre=attention_by_genre,
+        top_searches=top_searches,
+    )
+
+
+async def record_catalog_event(session: AsyncSession, event_in: CatalogEventCreate) -> None:
+    if event_in.movie_id is not None:
+        movie_exists = await session.scalar(
+            select(DimMovie.sk_movie_id).where(DimMovie.sk_movie_id == event_in.movie_id)
+        )
+        if movie_exists is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
+    session.add(
+        CatalogEvent(
+            visitor_id=event_in.visitor_id,
+            event_type=event_in.event_type,
+            sk_movie_id=event_in.movie_id,
+            source=event_in.source,
+            duration_seconds=event_in.duration_seconds,
+            search_term=event_in.search_term,
+            result_count=event_in.result_count,
+        )
+    )
+    await session.commit()

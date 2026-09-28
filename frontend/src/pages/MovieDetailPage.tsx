@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useMovieVisit } from "../services/catalogTracking";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
+import { Button } from "../components/ui/Button";
+import { MoviePlaceholderBg } from "../components/movies/MoviePlaceholderBg";
 import { PosterMark } from "../components/movies/PosterMark";
+import { ReviewForm } from "../components/movies/ReviewForm";
 import { ApiError } from "../services/api";
-import { getMovie } from "../services/movies";
+import { deleteMovie, getMovie } from "../services/movies";
 import type { MovieDetail, PersonSummary } from "../types/movie";
 import styles from "./MovieDetailPage.module.css";
 
@@ -27,9 +31,9 @@ function formatDuration(minutes: number | null): string | null {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   if (hours === 0) {
-    return `${rest}m`;
+    return `${rest}min`;
   }
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+  return rest ? `${hours}h ${rest}min` : `${hours}h`;
 }
 
 function formatReviewDate(value: string): string {
@@ -45,6 +49,22 @@ function namesFor(people: PersonSummary[], role: string): string[] {
 }
 
 function MovieHero({ movie }: { movie: MovieDetail }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const removal = useMutation({
+    mutationFn: () => deleteMovie(movie.sk_movie_id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["movies"] });
+      await queryClient.invalidateQueries({ queryKey: ["metrics"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
+      navigate("/movies");
+    },
+    onError: (caught: unknown) => {
+      setDeleteError(caught instanceof ApiError ? caught.message : "Could not reach the API.");
+    },
+  });
   const [posterFailed, setPosterFailed] = useState(false);
   const posterUrl = posterFailed ? null : movie.url_poster;
   const duration = formatDuration(movie.duracao_minutos);
@@ -73,7 +93,12 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
               onError={() => setPosterFailed(true)}
             />
           ) : (
-            <PosterMark title={movie.titulo} />
+            <PosterMark
+              title={movie.titulo}
+              year={movie.ano_lancamento}
+              genres={movie.genres.map((genre) => genre.nome_genero)}
+              duration={movie.duracao_minutos}
+            />
           )}
         </div>
         <div className={styles.intro}>
@@ -99,9 +124,32 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
           {movie.companies.length > 0 ? (
             <p className={styles.studios}>{movie.companies.map((company) => company.nome_produtora).join(", ")}</p>
           ) : null}
-          <Link className={styles.edit} to={`/movies/${movie.sk_movie_id}/edit`}>
-            Edit movie
-          </Link>
+          <div className={styles.manage}>
+            <Link className={styles.edit} to={`/movies/${movie.sk_movie_id}/edit`}>
+              Edit movie
+            </Link>
+            {confirmDelete ? (
+              <span className={styles.confirm}>
+                Delete this movie?
+                <button
+                  type="button"
+                  className={styles.remove}
+                  disabled={removal.isPending}
+                  onClick={() => removal.mutate()}
+                >
+                  Delete
+                </button>
+                <button type="button" className={styles.quiet} onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button type="button" className={styles.remove} onClick={() => setConfirmDelete(true)}>
+                Delete movie
+              </button>
+            )}
+          </div>
+          {deleteError ? <p className={styles.deleteError}>{deleteError}</p> : null}
         </div>
       </div>
 
@@ -141,6 +189,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
 
       <section className={styles.block}>
         <h3>Reviews</h3>
+        <ReviewForm movieId={movie.sk_movie_id} />
         {reviews.length === 0 ? <p className={styles.empty}>No reviews yet.</p> : null}
         <ul className={styles.reviews}>
           {reviews.map((review) => (
@@ -162,6 +211,28 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
   );
 }
 
+function BackButton() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  function goBack() {
+    if (location.key === "default") {
+      navigate("/movies");
+      return;
+    }
+    navigate(-1);
+  }
+
+  return (
+    <Button className={styles.back} onClick={goBack}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      Back
+    </Button>
+  );
+}
+
 export function MovieDetailPage() {
   const { movieId } = useParams();
   const movie = useQuery({
@@ -169,6 +240,7 @@ export function MovieDetailPage() {
     queryFn: ({ signal }) => getMovie(movieId ?? "", signal),
     enabled: Boolean(movieId),
   });
+  useMovieVisit(movieId, movie.isSuccess);
   const missing = movie.isError && movie.error instanceof ApiError && movie.error.status === 404;
   const [failedBackdropId, setFailedBackdropId] = useState<string | null>(null);
   const backdropUrl =
@@ -177,7 +249,11 @@ export function MovieDetailPage() {
       : null;
 
   return (
-    <section className={movie.isSuccess ? styles.sheet : undefined}>
+    <section
+      className={
+        movie.isSuccess ? (backdropUrl ? styles.sheet : `${styles.sheet} ${styles.placeholderSheet}`) : undefined
+      }
+    >
       {movie.isSuccess && backdropUrl ? (
         <img
           className={styles.backdrop}
@@ -187,23 +263,16 @@ export function MovieDetailPage() {
           onError={() => setFailedBackdropId(movie.data?.sk_movie_id ?? null)}
         />
       ) : null}
-      {movie.isSuccess && !backdropUrl ? <div className={styles.brandBackdrop} aria-hidden="true" /> : null}
-      <PageHeader eyebrow="Movie Management" title="Movie detail" />
+      {movie.isSuccess && !backdropUrl ? <MoviePlaceholderBg className={styles.placeholder} /> : null}
+      <BackButton />
+      <PageHeader title="Movie detail" />
 
       {movie.isPending ? <p className={styles.status}>Loading movie…</p> : null}
 
       {movie.isError ? (
         <div className={styles.status}>
           <p>{detailErrorMessage(movie.error)}</p>
-          {missing ? (
-            <Link className={styles.back} to="/movies">
-              Back to catalog
-            </Link>
-          ) : (
-            <button type="button" onClick={() => void movie.refetch()}>
-              Try again
-            </button>
-          )}
+          {!missing ? <Button onClick={() => void movie.refetch()}>Try again</Button> : null}
         </div>
       ) : null}
 

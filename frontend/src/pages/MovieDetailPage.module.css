@@ -4,21 +4,12 @@
   font-size: 14px;
 }
 
-.status button,
-.back {
-  display: inline-block;
+.status button {
   margin-top: 12px;
-  padding: 8px 14px;
-  border: 1px solid rgba(57, 231, 95, 0.25);
-  border-radius: 6px;
-  background: rgba(57, 231, 95, 0.1);
-  color: var(--color-neon);
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
+}
+
+.back {
+  margin: 0 0 18px;
 }
 
 .sheet {
@@ -28,7 +19,7 @@
 }
 
 .backdrop,
-.brandBackdrop {
+.placeholder {
   position: absolute;
   z-index: 0;
   top: 0;
@@ -44,26 +35,10 @@
   object-position: center 30%;
 }
 
-.brandBackdrop {
+.placeholder {
+  display: block;
+  width: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 42% 70% at 82% 38%, rgba(57, 231, 95, 0.34), transparent 62%),
-    radial-gradient(ellipse 28% 40% at 18% 88%, rgba(57, 231, 95, 0.1), transparent 70%),
-    linear-gradient(155deg, #222428 0%, #141516 58%, #18191b 100%);
-}
-
-.brandBackdrop::before {
-  content: "CINEDEX";
-  position: absolute;
-  top: 45%;
-  right: 0%;
-  color: transparent;
-  font-family: var(--font-display);
-  font-size: 148px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  line-height: 0.8;
-  -webkit-text-stroke: 1px rgba(57, 231, 95, 0.45);
 }
 
 .sheet::after {
@@ -80,7 +55,13 @@
   pointer-events: none;
 }
 
-.sheet > :not(.backdrop):not(.brandBackdrop) {
+.placeholderSheet::after {
+  background:
+    linear-gradient(to right, rgba(24, 25, 27, 0.42) 0%, rgba(24, 25, 27, 0.08) 48%, rgba(24, 25, 27, 0.16) 100%),
+    linear-gradient(to bottom, transparent 84%, var(--color-bg) 100%);
+}
+
+.sheet > :not(.backdrop):not(.placeholder) {
   position: relative;
   z-index: 1;
 }
@@ -193,15 +174,75 @@
   font-size: 13px;
 }
 
-.edit {
-  display: inline-block;
+.manage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
   margin-top: 18px;
+}
+
+.edit {
   color: var(--color-neon);
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  transition: color 0.15s ease;
+}
+
+.edit:hover {
+  color: #8cffae;
+}
+
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.remove,
+.quiet {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.remove {
+  color: #ff8d8d;
+  transition: color 0.15s ease;
+}
+
+.remove:hover:not(:disabled) {
+  color: #ffc7c7;
+}
+
+.quiet {
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.deleteError {
+  margin: 8px 0 0;
+  color: #ff8d8d;
+  font-size: 13px;
 }
 
 .block {
@@ -290,6 +331,17 @@
 }
 
 @media (max-width: 720px) {
+  .sheet {
+    margin: -20px -16px 0;
+    padding: 20px 16px 0;
+  }
+
+  .backdrop,
+  .placeholder,
+  .sheet::after {
+    height: 340px;
+  }
+
   .hero {
     grid-template-columns: 1fr;
   }

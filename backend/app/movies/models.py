@@ -244,3 +244,26 @@ class DimReview(Base):
     nota_media_usuarios: Mapped[float | None] = mapped_column(Double, default=None)
 
     movie: Mapped[DimMovie] = relationship(back_populates="reviews_summary")
+
+
+class CatalogEvent(Base):
+    """Acontecimento de uso do catálogo, fora das tabelas do desafio."""
+
+    __tablename__ = "catalog_events"
+
+    sk_event_id: Mapped[str] = mapped_column(
+        String(64), primary_key=True, default=generate_surrogate_key
+    )
+    occurred_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
+    visitor_id: Mapped[str] = mapped_column(String(64), index=True)
+    event_type: Mapped[str] = mapped_column(String(32), index=True)
+    sk_movie_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("dim_movies.sk_movie_id", ondelete="CASCADE"),
+        default=None,
+        index=True,
+    )
+    source: Mapped[str | None] = mapped_column(String(32), default=None)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, default=None)
+    search_term: Mapped[str | None] = mapped_column(String(200), default=None)
+    result_count: Mapped[int | None] = mapped_column(Integer, default=None)

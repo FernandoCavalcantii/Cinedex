@@ -3,7 +3,7 @@
 Base inicial para evoluir a atividade do RocketLab 2026.2. Ela preserva a organização do backend,
 o modelo relacional do catálogo de filmes em SQLAlchemy 2.0 e o histórico de
 migrações com Alembic. A API do catálogo já está exposta e o frontend Vite
-tem o layout base da aplicação, ainda sem consumir a listagem de filmes.
+lista os filmes e abre o detalhe de cada um.
 
 Os CSVs usados no bootcamp foram organizados dentro do próprio repositório em
 `data/raw/`, separados em `bases-1/` e `bases-2/`, para facilitar o uso durante
@@ -79,17 +79,24 @@ npm install
 npm run dev
 ```
 
-O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A busca confirmada com Enter filtra `/movies?q=...`.
+O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A home traz Catalog, Top Rated e Trending. Trending lista os filmes mais abertos, o maior à esquerda. O total no centro dessa faixa é só quem já foi aberto. A carga inicial grava no máximo duas aberturas, e só em seis filmes, para poucas visitas já mudarem quem aparece e a ordem. Subir de novo não soma outra abertura. A página Admin abre o card Metrics (`/admin/metrics`). Os números vêm de `GET /api/v1/admin/metrics` e são recalculados ao cadastrar, editar ou apagar um filme, ao gravar uma avaliação e quando um evento de uso é gravado. Users conta nomes distintos nas avaliações, não contas. Average score é a média de todas as notas, de 0 a 10, e o CSV repete esse nome. Last 7 days usa a data em que a resenha entrou no sistema. Added in 7 days conta filmes cadastrados pela tela nessa mesma janela. O catálogo importado não entra. Top rated exige pelo menos 3 avaliações. Um filme em dois gêneros entra nos dois. Em Movies by genre, filme sem gênero entra como No genre. Abrir o detalhe grava uma visita em `catalog_events`, sem coluna nova nas tabelas do desafio. O tempo nessa página e o tempo visível no catálogo também entram nessa tabela. Most viewed conta cada abertura. Today soma o tempo no catálogo na data do banco. Next-day returns conta o mesmo navegador anônimo em dois dias seguidos. No cartão a linha é curta, e o i ao lado de cada métrica traz a regra exata. O CSV repete o nome e a regra. Movies by genre rola dentro do bloco. Cada busca que termina grava o termo e quantos filmes a lista devolveu. Searches mostra os 8 termos mais repetidos, e empty é quantas dessas vezes não acharam filme. O botão Export nessa página baixa um CSV desse retrato, com a data do clique. O catálogo de filmes não entra no arquivo. A página Admin coloca Reports e Activity lado a lado. Reports abre Metrics. Activity junta as avaliações recentes com os filmes cadastrados pela tela, por data. O catálogo importado não entra nessa lista. Em Metrics, Movies até Next-day returns continuam em cartões verdes. Daí para baixo, o uso do app e o catálogo aparecem em barras: verde para abertura e busca, azul para tempo, âmbar para nota e verde-água para volume. Discover não tem mais Filter by Genre nem Recent Activity. O filtro de gênero continua em All Movies, e a coluna Activity do Admin continua com avaliações e filmes cadastrados. O cadastro de filme fica em All Movies. O lápis do card abre a edição. O ano sai da data de lançamento e não aparece na tela, e os gêneros que o filme já tem entram marcados. A home se chama Discover. Catalog e Top Rated mostram o total de títulos no centro da faixa. Um "i" explica as faixas e, para o admin, que a edição fica nos cards. Um "i" ao lado de All Movies explica o catálogo e, para o admin, que a gestão fica nessa página: adicionar, editar e apagar. O botão Add movie fica nessa página, na mesma linha do Filters, com o total de títulos no meio. No formulário, um "i" ao lado de cada campo explica o formato. O front repete os limites do schema antes de enviar, então o Save não segue se algo estiver fora do padrão e o aviso aparece em cima do campo: título até 500 caracteres, sinopse até 4.000, diretor até 2.000 e sem número ou símbolo, duração de 1 a 100.000 minutos, e pôster e fundo, quando preenchidos, com até 2.048 caracteres, começando em `https://` e terminando em `.jpg`. A página do filme apaga com uma confirmação curta. Na edição, apagar abre um `dialog` modal: a página escurece e o restante deixa de receber clique até confirmar com `delete` seguido do nome do filme, ou cancelar. No cadastro, os campos vazios mostram um exemplo começando com `Ex:`, em itálico e mais apagado. Em Genres, um "i" diz que dá para marcar mais de um gênero ou nenhum. No formulário, Back e Cancel voltam para a página anterior. Em All Movies, Filters combina um ou mais gêneros com o ano: um ano exato, a partir de um ano, ou até um ano. A busca dos filmes só acontece no Apply Filters, e o ano exato não se mistura com From/To. A seleção aplicada fica na URL até ser desligada. A busca filtra `/movies?q=...` depois de uma pausa curta, e o Enter confirma na hora. All Movies pagina o catálogo de 24 em 24. O clique no card abre `/movies/{id}`, e o botão Back volta à lista na mesma página. Sem pôster, o card e o detalhe mostram um cartaz gerado: um de três desenhos e uma de dez cores, com a marca do Cinedex, o ano e a duração (`15min`, `1h 12min`). No card, o gênero aparece só no hover, o ano e o título ficam um pouco mais altos, a linha entre o título e a duração fica no meio, e essa duração usa uma fonte um pouco maior. No detalhe, o cartaz ainda mostra até dois gêneros. O desenho fica atrás desse texto. A duração usa `min` minúsculo também no detalhe e no hover do card. Sem imagem de fundo, o detalhe usa um fundo desenhado do Cinedex. Nessa página dá para gravar uma avaliação: nome, nota de 0 a 10, com no máximo uma casa decimal, e resenha. Um "i" em Name, Score e Review explica o formato. O aviso fica em cima do campo, sem o popup do navegador, e Add review fica desligado enquanto algo estiver fora do padrão. Edit movie, Delete movie e Add review clareiam no hover. A média e a lista atualizam na hora. Até 720px, a navegação vira uma faixa horizontal, os cards cabem dois por linha, o detalhe empilha o pôster e o formulário empilha data, duração e status. No desktop, a barra lateral e os cards de 180px permanecem.
+
+Na carga, `normalize_catalog_title` desfaz aspas dobradas de escape do CSV no título do filme. A sinopse usa a mesma regra, em `normalize_catalog_synopsis`, repetida até o `""` sumir. O arquivo original não muda, e título ou sinopse criados pela API não passam por essa regra. Pessoa cujo nome inteiro é um número não entra no catálogo: a linha e o vínculo com o filme saem, e o crédito não aparece. Um nome como `50 Cent` permanece.
 
 ## API do catalogo
 
 A Fase 2 do backend ja expõe os seguintes endpoints na versao `v1`:
-- `GET /api/v1/movies` para listagem paginada e busca;
+- `GET /api/v1/movies` para listagem paginada, busca, filtro por um ou mais gêneros (`genre`, `genres`), ano (`year`, `year_from`, `year_to`), ordem por nota (`sort=rating`) e ordem por aberturas (`sort=views`);
+- `GET /api/v1/genres` para a lista de gêneros;
+- `GET /api/v1/reviews` para as avaliações mais recentes;
 - `GET /api/v1/movies/{id}` para detalhe completo;
 - `POST /api/v1/movies` para cadastro;
 - `PUT /api/v1/movies/{id}` para atualização;
 - `DELETE /api/v1/movies/{id}` para remoção;
-- `POST /api/v1/reviews` para inserir novas avaliacoes.
+- `POST /api/v1/reviews` para inserir novas avaliacoes;
+- `GET /api/v1/admin/feed` para os filmes cadastrados pela tela e as avaliações recentes, juntos, por data;
+- `GET /api/v1/admin/metrics` para os totais do catálogo, a média das notas, os filmes cadastrados pela tela nos últimos 7 dias, quem mais comentou, o top 5 por média, os filmes por gênero (incluindo quem não tem gênero), os mais vistos, o tempo por gênero, os minutos de hoje, quem voltou no dia seguinte e os termos mais buscados;
+- `POST /api/v1/events` para gravar abertura do detalhe, tempo nessa página, tempo visível no catálogo e o termo buscado.
 
 Os retornos incluem relacionamento com generos, produtoras, pessoas, performance,
 resumo de avaliacoes e lista de reviews quando aplicavel.
@@ -106,7 +113,7 @@ O schema corresponde aos nove arquivos CSV atuais da camada Diamond, com a
 adição de `movie_reviews`: uma avaliação individual por linha, na escala 0–10.
 A tabela aceita diretamente as colunas `sk_movie_review_id`, `sk_movie_id`,
 `nome`, `nota` e `comentario` do CSV enviado separadamente. `created_at` é
-gerado pelo banco. O contexto generativo não faz parte desta base.
+gerado pelo banco. O contexto generativo não faz parte desta base. O uso do app fica em `catalog_events`, fora desses CSVs: a migração `0002_catalog_events` cria a tabela, e a `0003_catalog_event_search` guarda o termo buscado e quantos filmes a lista devolveu.
 
 Os CSVs de apoio ficam em `data/raw/`. A ordem esperada para futura carga é:
 primeiro os filmes em `dim_movies`, depois as tabelas auxiliares e por fim o

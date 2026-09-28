@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { DragEvent, MouseEvent, PointerEvent, useEffect, useRef, useState } from "react";
+import { DragEvent, MouseEvent, PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../../services/api";
+import type { VisitSource } from "../../services/catalogTracking";
 import { listMovies } from "../../services/movies";
+import { Button } from "../ui/Button";
 import { MovieCard } from "./MovieCard";
 import styles from "./MovieStrip.module.css";
 
@@ -10,7 +12,12 @@ type MovieStripProps = {
   title: string;
   limit?: number;
   search?: string;
+  genre?: string;
+  sort?: "title" | "rating" | "views";
   viewAllTo?: string;
+  showTotal?: boolean;
+  info?: string;
+  source?: VisitSource;
 };
 
 function catalogErrorMessage(error: unknown): string {
@@ -27,10 +34,22 @@ const PAUSE_MS = 50;
 const MIN_FLICK = 0.12;
 const DECAY_PER_MS = 0.0024;
 
-export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripProps) {
+export function MovieStrip({
+  title,
+  limit = 12,
+  search,
+  genre,
+  sort = "title",
+  viewAllTo,
+  showTotal = true,
+  info,
+  source,
+}: MovieStripProps) {
+  const infoId = useId();
   const movies = useQuery({
-    queryKey: ["movies", { limit, search: search ?? "" }],
-    queryFn: ({ signal }) => listMovies({ limit, search }, signal),
+    queryKey: ["movies", { limit, search: search ?? "", genre: genre ?? "", sort }],
+    queryFn: ({ signal }) =>
+      listMovies({ limit, search, genre, sort: sort === "title" ? undefined : sort }, signal),
   });
 
   const total = movies.data?.total ?? null;
@@ -173,15 +192,27 @@ export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripP
   return (
     <section className={styles.section}>
       <div className={styles.header}>
-        <div className={styles.heading}>
+        <div className={styles.titleGroup}>
           <h2>{title}</h2>
-          {total !== null ? <span>{total.toLocaleString("en-US")} titles</span> : null}
+          {info ? (
+            <span className={styles.hint}>
+              <button type="button" className={styles.info} aria-label={`About ${title}`} aria-describedby={infoId}>
+                i
+              </button>
+              <span id={infoId} className={styles.tip} role="tooltip">
+                {info}
+              </span>
+            </span>
+          ) : null}
         </div>
+        {showTotal && total !== null ? <p className={styles.count}>{total.toLocaleString("pt-BR")} titles</p> : <span />}
         {viewAllTo ? (
           <Link className={styles.viewAll} to={viewAllTo}>
             View all →
           </Link>
-        ) : null}
+        ) : (
+          <span />
+        )}
       </div>
 
       {movies.isPending ? <p className={styles.status}>Loading movies…</p> : null}
@@ -189,15 +220,17 @@ export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripP
       {movies.isError ? (
         <div className={styles.status}>
           <p>{catalogErrorMessage(movies.error)}</p>
-          <button type="button" onClick={() => void movies.refetch()}>
-            Try again
-          </button>
+          <Button onClick={() => void movies.refetch()}>Try again</Button>
         </div>
       ) : null}
 
       {movies.isSuccess && movies.data.items.length === 0 ? (
         <p className={styles.status}>
-          {search ? `No movies found for “${search}”.` : "No movies in the catalog."}
+          {search
+            ? `No movies found for “${search}”.`
+            : sort === "views"
+              ? "No visits yet."
+              : "No movies in the catalog."}
         </p>
       ) : null}
 
@@ -213,7 +246,7 @@ export function MovieStrip({ title, limit = 12, search, viewAllTo }: MovieStripP
           onDragStart={onDragStart}
         >
           {movies.data.items.map((movie) => (
-            <MovieCard key={movie.sk_movie_id} movie={movie} />
+            <MovieCard key={movie.sk_movie_id} movie={movie} source={source} />
           ))}
         </div>
       ) : null}

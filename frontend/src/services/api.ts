@@ -1,6 +1,6 @@
 const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
 
-type QueryValue = string | number | boolean | null | undefined;
+type QueryValue = string | number | boolean | string[] | null | undefined;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -26,7 +26,13 @@ export async function apiGet<T>(
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== null && value !== "") {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item !== "") {
+            url.searchParams.append(key, item);
+          }
+        }
+      } else if (value !== undefined && value !== null && value !== "") {
         url.searchParams.set(key, String(value));
       }
     }
@@ -38,4 +44,45 @@ export async function apiGet<T>(
   }
 
   return (await response.json()) as T;
+}
+
+async function errorFromResponse(response: Response): Promise<ApiError> {
+  let message = `Request failed with status ${response.status}`;
+  try {
+    const payload = (await response.json()) as { detail?: unknown };
+    if (typeof payload.detail === "string" && payload.detail.trim()) {
+      message = payload.detail;
+    }
+  } catch {
+    // The status line is enough when the body is empty.
+  }
+  return new ApiError(response.status, message);
+}
+
+async function apiWrite<T>(path: string, method: "POST" | "PUT" | "DELETE", body?: unknown): Promise<T> {
+  const url = new URL(path.replace(/^\//, ""), `${getApiBaseUrl()}/`);
+  const response = await fetch(url, {
+    method,
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw await errorFromResponse(response);
+  }
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
+}
+
+export function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return apiWrite<T>(path, "POST", body);
+}
+
+export function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return apiWrite<T>(path, "PUT", body);
+}
+
+export function apiDelete(path: string): Promise<void> {
+  return apiWrite<void>(path, "DELETE");
 }

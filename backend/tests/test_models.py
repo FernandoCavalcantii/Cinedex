@@ -4,6 +4,7 @@ from app.movies import models  # noqa: F401  Registra os modelos ORM.
 
 def test_movie_schema_registers_expected_tables() -> None:
     expected_tables = {
+        "catalog_events",
         "bridge_movie_company",
         "bridge_movie_genre",
         "bridge_movie_person",
