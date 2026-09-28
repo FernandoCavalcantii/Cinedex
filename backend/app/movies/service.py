@@ -4,12 +4,13 @@ from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.movies.models import (
+    CatalogEvent,
     DimCompany,
     DimGenre,
     DimMovie,
@@ -19,6 +20,7 @@ from app.movies.models import (
     bridge_movie_genre,
 )
 from app.movies.schemas import (
+    CatalogEventCreate,
     CatalogMetrics,
     CompanySummary,
     MovieCreate,
@@ -34,9 +36,12 @@ from app.movies.schemas import (
     ReviewCreated,
     ReviewSummary,
     GenreSummary,
+    MetricAttention,
     MetricGenreCount,
     MetricRatedMovie,
     MetricReviewer,
+    MetricSearchTerm,
+    MetricViewedMovie,
 )
 
 
@@ -517,6 +522,79 @@ async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
         MetricGenreCount(nome_genero=name, movie_count=int(count)) for name, count in genre_rows.all()
     ]
 
+    viewed_rows = await session.execute(
+        select(DimMovie.sk_movie_id, DimMovie.titulo, func.count().label("qtd"))
+        .join(CatalogEvent, CatalogEvent.sk_movie_id == DimMovie.sk_movie_id)
+        .where(CatalogEvent.event_type == "detail_open")
+        .group_by(DimMovie.sk_movie_id, DimMovie.titulo)
+        .order_by(func.count().desc(), DimMovie.titulo)
+        .limit(5)
+    )
+    most_viewed = [
+        MetricViewedMovie(sk_movie_id=movie_id, titulo=title, view_count=int(count))
+        for movie_id, title, count in viewed_rows.all()
+    ]
+
+    attention_rows = await session.execute(
+        select(DimGenre.nome_genero, func.sum(CatalogEvent.duration_seconds))
+        .join(bridge_movie_genre, bridge_movie_genre.c.sk_genre_id == DimGenre.sk_genre_id)
+        .join(
+            CatalogEvent,
+            (CatalogEvent.sk_movie_id == bridge_movie_genre.c.sk_movie_id)
+            & (CatalogEvent.event_type == "detail_dwell"),
+        )
+        .group_by(DimGenre.nome_genero)
+        .order_by(func.sum(CatalogEvent.duration_seconds).desc(), DimGenre.nome_genero)
+        .limit(8)
+    )
+    attention_by_genre = [
+        MetricAttention(nome_genero=name, duration_seconds=int(seconds or 0))
+        for name, seconds in attention_rows.all()
+        if seconds
+    ]
+
+    catalog_seconds_today = (
+        await session.scalar(
+            select(func.coalesce(func.sum(CatalogEvent.duration_seconds), 0)).where(
+                CatalogEvent.event_type == "catalog_dwell",
+                func.date(CatalogEvent.occurred_at) == func.date("now"),
+            )
+        )
+        or 0
+    )
+
+    search_rows = await session.execute(
+        select(
+            CatalogEvent.search_term,
+            func.count(),
+            func.coalesce(func.sum(case((CatalogEvent.result_count == 0, 1), else_=0)), 0),
+        )
+        .where(CatalogEvent.event_type == "search", CatalogEvent.search_term.is_not(None))
+        .group_by(CatalogEvent.search_term)
+        .order_by(func.count().desc(), CatalogEvent.search_term)
+        .limit(8)
+    )
+    top_searches = [
+        MetricSearchTerm(search_term=term, search_count=int(count), empty_count=int(empty or 0))
+        for term, count, empty in search_rows.all()
+        if term
+    ]
+
+    earlier = aliased(CatalogEvent)
+    later = aliased(CatalogEvent)
+    returning_visitors = (
+        await session.scalar(
+            select(func.count(func.distinct(earlier.visitor_id)))
+            .select_from(earlier)
+            .join(
+                later,
+                (earlier.visitor_id == later.visitor_id)
+                & (func.date(later.occurred_at) == func.date(earlier.occurred_at, "+1 day")),
+            )
+        )
+        or 0
+    )
+
     return CatalogMetrics(
         movie_count=int(movie_count),
         review_count=int(review_count),
@@ -524,7 +602,33 @@ async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
         unreviewed_count=int(unreviewed_count),
         average_rating=None if average_rating is None else float(average_rating),
         reviews_last_7_days=int(reviews_last_7_days),
+        catalog_seconds_today=int(catalog_seconds_today),
+        returning_visitors=int(returning_visitors),
         top_reviewers=top_reviewers,
         top_rated=top_rated,
         genres=genres,
+        most_viewed=most_viewed,
+        attention_by_genre=attention_by_genre,
+        top_searches=top_searches,
     )
+
+
+async def record_catalog_event(session: AsyncSession, event_in: CatalogEventCreate) -> None:
+    if event_in.movie_id is not None:
+        movie_exists = await session.scalar(
+            select(DimMovie.sk_movie_id).where(DimMovie.sk_movie_id == event_in.movie_id)
+        )
+        if movie_exists is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
+    session.add(
+        CatalogEvent(
+            visitor_id=event_in.visitor_id,
+            event_type=event_in.event_type,
+            sk_movie_id=event_in.movie_id,
+            source=event_in.source,
+            duration_seconds=event_in.duration_seconds,
+            search_term=event_in.search_term,
+            result_count=event_in.result_count,
+        )
+    )
+    await session.commit()

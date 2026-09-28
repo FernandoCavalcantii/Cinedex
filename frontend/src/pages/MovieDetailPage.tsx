@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useMovieVisit } from "../services/catalogTracking";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/ui/Button";
@@ -238,6 +239,7 @@ export function MovieDetailPage() {
     queryFn: ({ signal }) => getMovie(movieId ?? "", signal),
     enabled: Boolean(movieId),
   });
+  useMovieVisit(movieId, movie.isSuccess);
   const missing = movie.isError && movie.error instanceof ApiError && movie.error.status === 404;
   const [failedBackdropId, setFailedBackdropId] = useState<string | null>(null);
   const backdropUrl =

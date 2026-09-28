@@ -64,7 +64,7 @@ export function ActivityFeed() {
         <ul className={styles.list}>
           {activity.data.map((item) => (
             <li key={item.sk_movie_review_id}>
-              <Link className={styles.row} to={`/movies/${item.sk_movie_id}`}>
+              <Link className={styles.row} to={`/movies/${item.sk_movie_id}`} state={{ source: "activity" }}>
                 <span className={styles.dot} aria-hidden="true" />
                 <span className={styles.copy}>
                   <span className={styles.line}>

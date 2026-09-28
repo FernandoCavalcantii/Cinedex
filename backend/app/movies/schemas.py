@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class GenreSummary(BaseModel):
@@ -166,6 +168,23 @@ class MetricGenreCount(BaseModel):
     movie_count: int
 
 
+class MetricViewedMovie(BaseModel):
+    sk_movie_id: str
+    titulo: str
+    view_count: int
+
+
+class MetricAttention(BaseModel):
+    nome_genero: str
+    duration_seconds: int
+
+
+class MetricSearchTerm(BaseModel):
+    search_term: str
+    search_count: int
+    empty_count: int
+
+
 class CatalogMetrics(BaseModel):
     movie_count: int
     review_count: int
@@ -173,6 +192,48 @@ class CatalogMetrics(BaseModel):
     unreviewed_count: int
     average_rating: float | None = None
     reviews_last_7_days: int
+    catalog_seconds_today: int
+    returning_visitors: int
     top_reviewers: list[MetricReviewer]
     top_rated: list[MetricRatedMovie]
     genres: list[MetricGenreCount]
+    most_viewed: list[MetricViewedMovie]
+    attention_by_genre: list[MetricAttention]
+    top_searches: list[MetricSearchTerm]
+
+
+class CatalogEventCreate(BaseModel):
+    visitor_id: str = Field(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
+    event_type: Literal["detail_open", "detail_dwell", "catalog_dwell", "search"]
+    movie_id: str | None = Field(default=None, max_length=64)
+    source: Literal["discover", "top_rated", "all_movies", "search", "genre", "activity", "metrics"] | None = None
+    duration_seconds: int | None = Field(default=None, ge=1, le=21600)
+    search_term: str | None = Field(default=None, max_length=200)
+    result_count: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def check_shape(self) -> "CatalogEventCreate":
+        if self.event_type == "detail_open" and not self.movie_id:
+            raise ValueError("detail_open requires a movie")
+        if self.event_type == "detail_dwell" and (not self.movie_id or self.duration_seconds is None):
+            raise ValueError("detail_dwell requires a movie and a duration")
+        if self.event_type == "catalog_dwell" and self.duration_seconds is None:
+            raise ValueError("catalog_dwell requires a duration")
+        if self.event_type == "search":
+            term = (self.search_term or "").strip()
+            if not term or self.result_count is None:
+                raise ValueError("search requires a term and a result count")
+            self.search_term = term
+        if self.event_type == "detail_open":
+            self.duration_seconds = None
+        if self.event_type == "catalog_dwell":
+            self.movie_id = None
+            self.source = None
+        if self.event_type == "search":
+            self.movie_id = None
+            self.source = None
+            self.duration_seconds = None
+        else:
+            self.search_term = None
+            self.result_count = None
+        return self

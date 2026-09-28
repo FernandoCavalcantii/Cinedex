@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DragEvent, MouseEvent, PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../../services/api";
+import type { VisitSource } from "../../services/catalogTracking";
 import { listMovies } from "../../services/movies";
 import { Button } from "../ui/Button";
 import { MovieCard } from "./MovieCard";
@@ -16,6 +17,7 @@ type MovieStripProps = {
   viewAllTo?: string;
   showTotal?: boolean;
   info?: string;
+  source?: VisitSource;
 };
 
 function catalogErrorMessage(error: unknown): string {
@@ -41,6 +43,7 @@ export function MovieStrip({
   viewAllTo,
   showTotal = true,
   info,
+  source,
 }: MovieStripProps) {
   const infoId = useId();
   const movies = useQuery({
@@ -239,7 +242,7 @@ export function MovieStrip({
           onDragStart={onDragStart}
         >
           {movies.data.items.map((movie) => (
-            <MovieCard key={movie.sk_movie_id} movie={movie} />
+            <MovieCard key={movie.sk_movie_id} movie={movie} source={source} />
           ))}
         </div>
       ) : null}

@@ -79,6 +79,23 @@ export type MetricGenreCount = {
   movie_count: number;
 };
 
+export type MetricViewedMovie = {
+  sk_movie_id: string;
+  titulo: string;
+  view_count: number;
+};
+
+export type MetricAttention = {
+  nome_genero: string;
+  duration_seconds: number;
+};
+
+export type MetricSearchTerm = {
+  search_term: string;
+  search_count: number;
+  empty_count: number;
+};
+
 export type CatalogMetrics = {
   movie_count: number;
   review_count: number;
@@ -86,7 +103,12 @@ export type CatalogMetrics = {
   unreviewed_count: number;
   average_rating: number | null;
   reviews_last_7_days: number;
+  catalog_seconds_today: number;
+  returning_visitors: number;
   top_reviewers: MetricReviewer[];
   top_rated: MetricRatedMovie[];
   genres: MetricGenreCount[];
+  most_viewed: MetricViewedMovie[];
+  attention_by_genre: MetricAttention[];
+  top_searches: MetricSearchTerm[];
 };

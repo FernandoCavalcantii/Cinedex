@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.movies.schemas import (
+    CatalogEventCreate,
     CatalogMetrics,
     GenreSummary,
     MovieCreate,
@@ -23,6 +24,7 @@ from app.movies.service import (
     delete_movie,
     get_catalog_metrics,
     get_movie,
+    record_catalog_event,
     list_genres,
     list_movies,
     list_recent_activity,
@@ -105,6 +107,18 @@ async def read_recent_activity(
 @admin_router.get("/metrics", response_model=CatalogMetrics)
 async def read_catalog_metrics(session: AsyncSession = Depends(get_db)) -> CatalogMetrics:
     return await get_catalog_metrics(session)
+
+
+events_router = APIRouter(prefix="/events", tags=["events"])
+
+
+@events_router.post("", status_code=status.HTTP_204_NO_CONTENT)
+async def create_catalog_event(
+    event_in: CatalogEventCreate,
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    await record_catalog_event(session, event_in)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @reviews_router.post("", response_model=ReviewCreated, status_code=status.HTTP_201_CREATED)

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Pagination } from "../layout/Pagination";
 import { Button } from "../ui/Button";
 import { ApiError } from "../../services/api";
+import { useRecordedSearch, type VisitSource } from "../../services/catalogTracking";
 import { listMovies } from "../../services/movies";
 import { MovieCard } from "./MovieCard";
 import styles from "./MovieCatalog.module.css";
@@ -21,6 +22,16 @@ type MovieCatalogProps = {
   toolbarStart?: ReactNode;
   toolbarEnd?: ReactNode;
 };
+
+function cardSource(search: string | undefined, genres: string[] | undefined): VisitSource {
+  if (search) {
+    return "search";
+  }
+  if (genres && genres.length > 0) {
+    return "genre";
+  }
+  return "all_movies";
+}
 
 function catalogErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -84,6 +95,7 @@ export function MovieCatalog({
   });
 
   const total = movies.data?.total ?? 0;
+  useRecordedSearch(search, movies.isSuccess && !movies.isFetching ? movies.data?.total : undefined);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -120,7 +132,7 @@ export function MovieCatalog({
           <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
           <div className={styles.grid}>
             {movies.data.items.map((movie) => (
-              <MovieCard key={movie.sk_movie_id} movie={movie} />
+              <MovieCard key={movie.sk_movie_id} movie={movie} source={cardSource(search, genres)} />
             ))}
           </div>
           <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />

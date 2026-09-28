@@ -1,5 +1,13 @@
-.back {
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 18px;
+}
+
+.back {
+  margin: 0;
 }
 
 .status {
@@ -161,6 +169,10 @@
 }
 
 @media (max-width: 720px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
   .stats {
     grid-template-columns: 1fr 1fr;
   }
