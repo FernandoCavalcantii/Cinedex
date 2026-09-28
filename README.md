@@ -9,6 +9,14 @@ Catálogo de filmes para consultar o acervo, avaliar cada título e acompanhar o
   <ol>
     <li><a href="#sobre-o-projeto">Sobre o projeto</a></li>
     <li>
+      <a href="#como-rodar">Como rodar</a>
+      <ul>
+        <li><a href="#pre-requisitos">Pré-requisitos</a></li>
+        <li><a href="#instalacao">Instalação</a></li>
+        <li><a href="#sem-docker">Sem Docker</a></li>
+      </ul>
+    </li>
+    <li>
       <a href="#fluxos">Fluxos</a>
       <ul>
         <li><a href="#catalogo">Catálogo</a></li>
@@ -20,14 +28,6 @@ Catálogo de filmes para consultar o acervo, avaliar cada título e acompanhar o
       </ul>
     </li>
     <li><a href="#tecnologias">Tecnologias</a></li>
-    <li>
-      <a href="#como-rodar">Como rodar</a>
-      <ul>
-        <li><a href="#pre-requisitos">Pré-requisitos</a></li>
-        <li><a href="#instalacao">Instalação</a></li>
-        <li><a href="#sem-docker">Sem Docker</a></li>
-      </ul>
-    </li>
     <li><a href="#rotas">Rotas</a></li>
   </ol>
 </details>
@@ -37,6 +37,63 @@ Catálogo de filmes para consultar o acervo, avaliar cada título e acompanhar o
 O Cinedex é um catálogo de filmes. Dá para percorrer a lista, abrir um título, ler sinopse, créditos e avaliações, e ver a média das notas. Também dá para cadastrar, editar e apagar filmes, e registrar uma nota com uma resenha.
 
 A interface tem três áreas: **Discover**, **All Movies** e **Admin**.
+
+<p align="right"><a href="#readme-top">voltar ao topo</a></p>
+
+## Como rodar
+
+### Pré-requisitos
+
+- [Docker](https://docs.docker.com/get-docker/) com Docker Compose.
+
+Para rodar fora do Docker:
+
+- Python 3.11 ou superior.
+- Node.js 18.19 ou superior.
+
+### Instalação
+
+Na pasta do projeto:
+
+```bash
+docker compose up -d --build
+```
+
+Nas próximas vezes, `docker compose up -d` basta.
+
+- Interface: http://localhost:5173
+- API: http://localhost:8000 (`/docs` e `GET /health`)
+
+Na primeira subida, se o volume do banco ainda estiver vazio, os CSVs de `data/raw/` são carregados. `docker compose down` para os containers e mantém os dados. `docker compose down -v` apaga o volume, e a próxima subida carrega os CSVs de novo.
+
+### Sem Docker
+
+O modelo de variáveis fica em `backend/.env.example`. Fora do Docker, as que importam são `DATABASE_URL` e `BACKEND_CORS_ORIGINS`. O frontend usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`.
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env
+alembic upgrade head
+python -m app.scripts.seed_catalog
+uvicorn app.main:app --reload
+```
+
+Em outro terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Os testes da API, com o ambiente do backend ativo:
+
+```bash
+pytest
+```
 
 <p align="right"><a href="#readme-top">voltar ao topo</a></p>
 
@@ -99,63 +156,6 @@ Na carga inicial, aspas escapadas de título e sinopse são desfeitas. Um nome d
 **Banco de dados.** SQLite, com SQLAlchemy e Alembic.
 
 **Execução.** Docker Compose.
-
-<p align="right"><a href="#readme-top">voltar ao topo</a></p>
-
-## Como rodar
-
-### Pré-requisitos
-
-- [Docker](https://docs.docker.com/get-docker/) com Docker Compose.
-
-Para rodar fora do Docker:
-
-- Python 3.11 ou superior.
-- Node.js 18.19 ou superior.
-
-### Instalação
-
-Na pasta do projeto:
-
-```bash
-docker compose up -d --build
-```
-
-Nas próximas vezes, `docker compose up -d` basta.
-
-- Interface: http://localhost:5173
-- API: http://localhost:8000 (`/docs` e `GET /health`)
-
-Na primeira subida, se o volume do banco ainda estiver vazio, os CSVs de `data/raw/` são carregados. `docker compose down` para os containers e mantém os dados. `docker compose down -v` apaga o volume, e a próxima subida carrega os CSVs de novo.
-
-### Sem Docker
-
-O modelo de variáveis fica em `backend/.env.example`. Fora do Docker, as que importam são `DATABASE_URL` e `BACKEND_CORS_ORIGINS`. O frontend usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`.
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env
-alembic upgrade head
-python -m app.scripts.seed_catalog
-uvicorn app.main:app --reload
-```
-
-Em outro terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Os testes da API, com o ambiente do backend ativo:
-
-```bash
-pytest
-```
 
 <p align="right"><a href="#readme-top">voltar ao topo</a></p>
 
