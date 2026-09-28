@@ -192,6 +192,12 @@ function MetricsBody({ metrics }: { metrics: CatalogMetrics }) {
           info="Reviews saved in the last 7 days. Imported reviews use the import time."
         />
         <Stat
+          label="Added in 7 days"
+          value={formatCount(metrics.movies_added_last_7_days)}
+          note="From the screen"
+          info="Movies added in the app in the last 7 days. The imported catalog is not included."
+        />
+        <Stat
           label="Today"
           value={formatSpent(metrics.catalog_seconds_today)}
           note="Time in the catalog today"

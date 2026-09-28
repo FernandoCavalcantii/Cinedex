@@ -524,6 +524,16 @@ async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
         )
         or 0
     )
+    movies_added_last_7_days = (
+        await session.scalar(
+            select(func.count(func.distinct(CatalogEvent.sk_movie_id))).where(
+                CatalogEvent.event_type == "movie_created",
+                CatalogEvent.sk_movie_id.is_not(None),
+                CatalogEvent.occurred_at >= text("datetime('now', '-7 days')"),
+            )
+        )
+        or 0
+    )
 
     reviewer_rows = await session.execute(
         select(MovieReview.nome, func.count().label("qtd"))
@@ -668,6 +678,7 @@ async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
         unreviewed_count=int(unreviewed_count),
         average_rating=None if average_rating is None else float(average_rating),
         reviews_last_7_days=int(reviews_last_7_days),
+        movies_added_last_7_days=int(movies_added_last_7_days),
         catalog_seconds_today=int(catalog_seconds_today),
         returning_visitors=int(returning_visitors),
         top_reviewers=top_reviewers,

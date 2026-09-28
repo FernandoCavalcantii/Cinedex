@@ -202,6 +202,7 @@ class CatalogMetrics(BaseModel):
     unreviewed_count: int
     average_rating: float | None = None
     reviews_last_7_days: int
+    movies_added_last_7_days: int
     catalog_seconds_today: int
     returning_visitors: int
     top_reviewers: list[MetricReviewer]

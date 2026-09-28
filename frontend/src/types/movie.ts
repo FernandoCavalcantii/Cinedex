@@ -113,6 +113,7 @@ export type CatalogMetrics = {
   unreviewed_count: number;
   average_rating: number | null;
   reviews_last_7_days: number;
+  movies_added_last_7_days: number;
   catalog_seconds_today: number;
   returning_visitors: number;
   top_reviewers: MetricReviewer[];

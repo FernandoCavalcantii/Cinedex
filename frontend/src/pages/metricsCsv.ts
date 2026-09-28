@@ -24,6 +24,7 @@ export function buildMetricsCsv(metrics: CatalogMetrics, exportedAt: Date): stri
     ["summary", "Unreviewed", metrics.unreviewed_count, "Movies with no review"],
     ["summary", "Average score", metrics.average_rating === null ? "" : metrics.average_rating.toFixed(1), "Mean of all review scores, 0 to 10"],
     ["summary", "Last 7 days", metrics.reviews_last_7_days, "Reviews saved this week"],
+    ["summary", "Added in 7 days", metrics.movies_added_last_7_days, "Movies added in the app. The imported catalog is not included."],
     ["summary", "Today", metrics.catalog_seconds_today, "Seconds in the catalog today"],
     ["summary", "Next-day returns", metrics.returning_visitors, "Same anonymous browser on a day and the next. Creating a movie does not count."],
   ];
