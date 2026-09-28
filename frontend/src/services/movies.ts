@@ -18,7 +18,7 @@ type ListMoviesQuery = {
   year?: number;
   year_from?: number;
   year_to?: number;
-  sort?: "title" | "rating";
+  sort?: "title" | "rating" | "views";
 };
 
 export function listMovies(

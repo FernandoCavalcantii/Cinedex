@@ -333,6 +333,7 @@ async def list_movies(
             filters.append(DimMovie.ano_lancamento <= year_to)
 
     ranked_reviews = None
+    opened = None
     if sort == "rating":
         ranked_reviews = (
             select(
@@ -344,12 +345,27 @@ async def list_movies(
             .having(func.count(MovieReview.sk_movie_review_id) >= 3)
             .subquery()
         )
+    elif sort == "views":
+        opened = (
+            select(
+                CatalogEvent.sk_movie_id.label("sk_movie_id"),
+                func.count().label("qtd"),
+            )
+            .where(
+                CatalogEvent.event_type == "detail_open",
+                CatalogEvent.sk_movie_id.is_not(None),
+            )
+            .group_by(CatalogEvent.sk_movie_id)
+            .subquery()
+        )
 
     count_statement = select(func.count(DimMovie.sk_movie_id))
     if ranked_reviews is not None:
         count_statement = count_statement.join(
             ranked_reviews, ranked_reviews.c.sk_movie_id == DimMovie.sk_movie_id
         )
+    elif opened is not None:
+        count_statement = count_statement.join(opened, opened.c.sk_movie_id == DimMovie.sk_movie_id)
     if filters:
         count_statement = count_statement.where(*filters)
 
@@ -370,6 +386,11 @@ async def list_movies(
         statement = statement.join(ranked_reviews, ranked_reviews.c.sk_movie_id == DimMovie.sk_movie_id).order_by(
             ranked_reviews.c.media.desc(),
             ranked_reviews.c.qtd.desc(),
+            DimMovie.titulo,
+        )
+    elif opened is not None:
+        statement = statement.join(opened, opened.c.sk_movie_id == DimMovie.sk_movie_id).order_by(
+            opened.c.qtd.desc(),
             DimMovie.titulo,
         )
     else:

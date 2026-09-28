@@ -217,7 +217,9 @@ class CatalogEventCreate(BaseModel):
     visitor_id: str = Field(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
     event_type: Literal["detail_open", "detail_dwell", "catalog_dwell", "search"]
     movie_id: str | None = Field(default=None, max_length=64)
-    source: Literal["discover", "top_rated", "all_movies", "search", "genre", "activity", "metrics"] | None = None
+    source: Literal[
+        "discover", "top_rated", "trending", "all_movies", "search", "genre", "activity", "metrics"
+    ] | None = None
     duration_seconds: int | None = Field(default=None, ge=1, le=21600)
     search_term: str | None = Field(default=None, max_length=200)
     result_count: int | None = Field(default=None, ge=0)

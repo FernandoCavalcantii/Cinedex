@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "./api";
 export type VisitSource =
   | "discover"
   | "top_rated"
+  | "trending"
   | "all_movies"
   | "search"
   | "genre"
@@ -30,6 +31,7 @@ const MAX_SECONDS = 21600;
 const SOURCES = new Set<VisitSource>([
   "discover",
   "top_rated",
+  "trending",
   "all_movies",
   "search",
   "genre",
@@ -147,6 +149,7 @@ export function useMovieVisit(movieId: string | undefined, enabled: boolean) {
       }).then((ok) => {
         if (ok) {
           void queryClient.invalidateQueries({ queryKey: ["metrics"] });
+          void queryClient.invalidateQueries({ queryKey: ["movies"] });
         }
       });
     }

@@ -17,6 +17,7 @@ from sqlalchemy import delete, func, insert, select
 from app.db.session import AsyncSessionLocal
 from app.scripts.title_cleaning import normalize_catalog_title
 from app.movies.models import (
+    CatalogEvent,
     DimCompany,
     DimGenre,
     DimMovie,
@@ -27,9 +28,20 @@ from app.movies.models import (
     bridge_movie_company,
     bridge_movie_genre,
     bridge_movie_person,
+    generate_surrogate_key,
 )
 
 LOGGER = logging.getLogger(__name__)
+
+SEED_VISITOR_ID = "seed-trending"
+TRENDING_OPENS: tuple[tuple[str, int, int], ...] = (
+    ("Lady Bird", 2017, 2),
+    ("Parasite", 2019, 2),
+    ("Get Out", 2017, 1),
+    ("Moonlight", 2016, 1),
+    ("Paterson", 2016, 1),
+    ("Roma", 2018, 1),
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATA_ROOT = PROJECT_ROOT / "data" / "raw"
@@ -224,6 +236,46 @@ async def _catalog_has_movies() -> bool:
     return bool(total)
 
 
+async def _seed_trending_opens() -> None:
+    """Grava no máximo duas aberturas em poucos filmes, para a faixa Trending não nascer vazia."""
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            for title, year, opens in TRENDING_OPENS:
+                target = min(2, opens)
+                if target < 1:
+                    continue
+                movie_id = await session.scalar(
+                    select(DimMovie.sk_movie_id)
+                    .where(DimMovie.titulo == title, DimMovie.ano_lancamento == year)
+                    .limit(1)
+                )
+                if movie_id is None:
+                    LOGGER.info("Trending ignorou %s (%s): filme ausente.", title, year)
+                    continue
+                existing = await session.scalar(
+                    select(func.count())
+                    .select_from(CatalogEvent)
+                    .where(
+                        CatalogEvent.visitor_id == SEED_VISITOR_ID,
+                        CatalogEvent.event_type == "detail_open",
+                        CatalogEvent.sk_movie_id == movie_id,
+                    )
+                )
+                missing = target - int(existing or 0)
+                for _ in range(missing):
+                    session.add(
+                        CatalogEvent(
+                            sk_event_id=generate_surrogate_key(),
+                            visitor_id=SEED_VISITOR_ID,
+                            event_type="detail_open",
+                            sk_movie_id=movie_id,
+                        )
+                    )
+                if missing > 0:
+                    LOGGER.info("Trending gravou %s abertura(s) em %s (%s).", missing, title, year)
+
+
 async def seed_catalog(
     data_root: Path,
     batch_size: int = 5000,
@@ -232,6 +284,7 @@ async def seed_catalog(
 ) -> None:
     if skip_if_present and await _catalog_has_movies():
         LOGGER.info("Catálogo já populado no volume. Carga ignorada.")
+        await _seed_trending_opens()
         return
 
     if reset:
@@ -293,6 +346,8 @@ async def seed_catalog(
         LOGGER.info("Carregando %s a partir de %s", name, spec.path)
         inserted = await _insert_rows(spec.table, row_iterators[name](spec.path), batch_size)
         LOGGER.info("%s carregado com %s linhas", name, inserted)
+
+    await _seed_trending_opens()
 
 
 def build_parser() -> argparse.ArgumentParser:

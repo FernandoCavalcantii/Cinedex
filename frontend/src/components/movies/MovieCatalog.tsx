@@ -16,19 +16,29 @@ type MovieCatalogProps = {
   year?: number;
   yearFrom?: number;
   yearTo?: number;
-  sort?: "title" | "rating";
+  sort?: "title" | "rating" | "views";
   page: number;
   onPageChange: (page: number) => void;
   toolbarStart?: ReactNode;
   toolbarEnd?: ReactNode;
 };
 
-function cardSource(search: string | undefined, genres: string[] | undefined): VisitSource {
+function cardSource(
+  search: string | undefined,
+  genres: string[] | undefined,
+  sort: "title" | "rating" | "views",
+): VisitSource {
   if (search) {
     return "search";
   }
   if (genres && genres.length > 0) {
     return "genre";
+  }
+  if (sort === "views") {
+    return "trending";
+  }
+  if (sort === "rating") {
+    return "top_rated";
   }
   return "all_movies";
 }
@@ -40,12 +50,15 @@ function catalogErrorMessage(error: unknown): string {
   return "Could not reach the API.";
 }
 
-function emptyCatalogMessage(search?: string, filtered?: boolean): string {
+function emptyCatalogMessage(search?: string, filtered?: boolean, sort?: "title" | "rating" | "views"): string {
   if (search) {
     return `No movies found for “${search}”.`;
   }
   if (filtered) {
     return "No movies match these filters.";
+  }
+  if (sort === "views") {
+    return "No visits yet.";
   }
   return "No movies in the catalog.";
 }
@@ -88,7 +101,7 @@ export function MovieCatalog({
           year,
           year_from: yearFrom,
           year_to: yearTo,
-          sort: sort === "rating" ? "rating" : undefined,
+          sort: sort === "title" ? undefined : sort,
         },
         signal,
       ),
@@ -116,7 +129,7 @@ export function MovieCatalog({
 
       {movies.isSuccess && total === 0 ? (
         <p className={styles.status}>
-          {emptyCatalogMessage(search, filtered)}
+          {emptyCatalogMessage(search, filtered, sort)}
         </p>
       ) : null}
 
@@ -132,7 +145,7 @@ export function MovieCatalog({
           <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
           <div className={styles.grid}>
             {movies.data.items.map((movie) => (
-              <MovieCard key={movie.sk_movie_id} movie={movie} source={cardSource(search, genres)} />
+              <MovieCard key={movie.sk_movie_id} movie={movie} source={cardSource(search, genres, sort)} />
             ))}
           </div>
           <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />

@@ -27,7 +27,8 @@ export function MoviesPage() {
   const year = readYear(searchParams.get("year"));
   const yearFrom = readYear(searchParams.get("year_from"));
   const yearTo = readYear(searchParams.get("year_to"));
-  const sort = searchParams.get("sort") === "rating" ? "rating" : "title";
+  const sortParam = searchParams.get("sort");
+  const sort = sortParam === "rating" || sortParam === "views" ? sortParam : "title";
   const requested = Number(searchParams.get("page"));
   const page = Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
 
@@ -39,6 +40,9 @@ export function MoviesPage() {
   } else if (sort === "rating") {
     title = "Top Rated";
     info = `${manageInfo} Only movies with at least 3 reviews.`;
+  } else if (sort === "views") {
+    title = "Trending";
+    info = `${manageInfo} Ordered by how many times the page was opened.`;
   } else if (genres.length === 1 && year === undefined && yearFrom === undefined && yearTo === undefined) {
     title = genres[0];
   }

@@ -13,7 +13,7 @@ type MovieStripProps = {
   limit?: number;
   search?: string;
   genre?: string;
-  sort?: "title" | "rating";
+  sort?: "title" | "rating" | "views";
   viewAllTo?: string;
   showTotal?: boolean;
   info?: string;
@@ -49,7 +49,7 @@ export function MovieStrip({
   const movies = useQuery({
     queryKey: ["movies", { limit, search: search ?? "", genre: genre ?? "", sort }],
     queryFn: ({ signal }) =>
-      listMovies({ limit, search, genre, sort: sort === "rating" ? "rating" : undefined }, signal),
+      listMovies({ limit, search, genre, sort: sort === "title" ? undefined : sort }, signal),
   });
 
   const total = movies.data?.total ?? null;
@@ -226,7 +226,11 @@ export function MovieStrip({
 
       {movies.isSuccess && movies.data.items.length === 0 ? (
         <p className={styles.status}>
-          {search ? `No movies found for “${search}”.` : "No movies in the catalog."}
+          {search
+            ? `No movies found for “${search}”.`
+            : sort === "views"
+              ? "No visits yet."
+              : "No movies in the catalog."}
         </p>
       ) : null}
 

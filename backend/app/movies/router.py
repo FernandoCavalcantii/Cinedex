@@ -49,7 +49,7 @@ async def read_movies(
     year: int | None = Query(default=None, ge=1888, le=2100),
     year_from: int | None = Query(default=None, ge=1888, le=2100),
     year_to: int | None = Query(default=None, ge=1888, le=2100),
-    sort: Literal["title", "rating"] = Query("title"),
+    sort: Literal["title", "rating", "views"] = Query("title"),
     session: AsyncSession = Depends(get_db),
 ) -> PaginatedMovieList:
     return await list_movies(
