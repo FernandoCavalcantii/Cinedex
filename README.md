@@ -1,59 +1,10 @@
-# RocketLab 2026.2 — repositório base
+# Cinedex
 
-Base inicial para evoluir a atividade do RocketLab 2026.2. Ela preserva a organização do backend,
-o modelo relacional do catálogo de filmes em SQLAlchemy 2.0 e o histórico de
-migrações com Alembic. A API do catálogo já está exposta e o frontend Vite
-lista os filmes e abre o detalhe de cada um.
+Catálogo de filmes com busca, avaliações e um painel de métricas de uso.
 
-Os CSVs usados no bootcamp foram organizados dentro do próprio repositório em
-`data/raw/`, separados em `bases-1/` e `bases-2/`, para facilitar o uso durante
-o desenvolvimento e a futura carga inicial.
+## Como rodar
 
-> **Nota:** `RocketLab` é apenas o nome de referência desta base. O diretório,
-> nome do pacote, título da API e arquivo do banco podem ser renomeados para o
-> que preferirem; eles não representam uma exigência da
-> estrutura-base.
-
-## Estrutura
-
-```text
-.
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/        # ponto de composição dos futuros routers
-│   │   ├── core/          # configurações e logging
-│   │   ├── db/            # Base ORM, engine e sessões
-│   │   └── movies/        # modelos SQLAlchemy do domínio de filmes
-│   ├── migrations/        # ambiente e revisões Alembic
-│   └── tests/
-├── data/
-│   └── raw/               # CSVs de apoio do bootcamp
-├── frontend/              # app Vite + React + TypeScript
-└── README.md
-```
-
-## Execução
-
-Requer Python 3.11 ou superior.
-
-```bash
-cd backend
-python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-cp .env.example .env
-.venv/bin/alembic upgrade head
-.venv/bin/python -m app.scripts.seed_catalog
-.venv/bin/uvicorn app.main:app --reload
-```
-
-## Execução com Docker
-
-Para desenvolvimento multi-plataforma, o repositório já inclui:
-- `backend/Dockerfile` para a API FastAPI;
-- `frontend/Dockerfile` para a aplicação Vite;
-- `docker-compose.yml` para orquestração.
-
-Na primeira vez, ou depois de mudar Dockerfile e dependências:
+A forma de subir o projeto é o Docker Compose. Na primeira vez, ou depois de mudar Dockerfile e dependências:
 
 ```bash
 docker compose up -d --build
@@ -65,13 +16,24 @@ No dia a dia:
 docker compose up -d
 ```
 
-Isso sobe a API, o frontend e, se o volume `rocketlab-data` ainda estiver vazio, a carga dos CSVs. O banco fica nesse volume. `docker compose down` para os containers e mantém os dados. A carga só roda de novo se o volume for removido com `docker compose down -v`.
+- Interface: http://localhost:5173
+- API: http://localhost:8000 (`/docs` e `GET /health`)
 
-A API fica em `http://localhost:8000` (`/docs` e `GET /health`). A interface fica em `http://localhost:5173`.
+Na primeira subida, se o volume do banco ainda estiver vazio, os CSVs de `data/raw/` são carregados. `docker compose down` para os containers e mantém os dados. `docker compose down -v` apaga o volume e a próxima subida carrega os CSVs de novo.
 
-## Frontend
+### Sem Docker
 
-O app também pode subir fora do Docker, com Node 18.19 ou superior, desde que a API esteja em `http://localhost:8000`:
+A API pede Python 3.11 ou superior. O frontend pede Node 18.19 ou superior, com a API em http://localhost:8000.
+
+```bash
+cd backend
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+cp .env.example .env
+.venv/bin/alembic upgrade head
+.venv/bin/python -m app.scripts.seed_catalog
+.venv/bin/uvicorn app.main:app --reload
+```
 
 ```bash
 cd frontend
@@ -79,57 +41,43 @@ npm install
 npm run dev
 ```
 
-O cliente HTTP usa `VITE_API_BASE_URL`, com padrão `http://localhost:8000/api/v1`. A home e `/movies` consomem `GET /api/v1/movies` e mostram a faixa de cards. A home traz Catalog, Top Rated e Trending. Trending lista os filmes mais abertos, o maior à esquerda. O total no centro dessa faixa é só quem já foi aberto. A carga inicial grava no máximo duas aberturas, e só em seis filmes, para poucas visitas já mudarem quem aparece e a ordem. Subir de novo não soma outra abertura. A página Admin abre o card Metrics (`/admin/metrics`). Os números vêm de `GET /api/v1/admin/metrics` e são recalculados ao cadastrar, editar ou apagar um filme, ao gravar uma avaliação e quando um evento de uso é gravado. Users conta nomes distintos nas avaliações, não contas. Average score é a média de todas as notas, de 0 a 10, e o CSV repete esse nome. Last 7 days usa a data em que a resenha entrou no sistema. Added in 7 days conta filmes cadastrados pela tela nessa mesma janela. O catálogo importado não entra. Top rated exige pelo menos 3 avaliações. Um filme em dois gêneros entra nos dois. Em Movies by genre, filme sem gênero entra como No genre. Abrir o detalhe grava uma visita em `catalog_events`, sem coluna nova nas tabelas do desafio. O tempo nessa página e o tempo visível no catálogo também entram nessa tabela. Most viewed conta cada abertura. Today soma o tempo no catálogo na data do banco. Next-day returns conta o mesmo navegador anônimo em dois dias seguidos. No cartão a linha é curta, e o i ao lado de cada métrica traz a regra exata. O CSV repete o nome e a regra. Movies by genre rola dentro do bloco. Cada busca que termina grava o termo e quantos filmes a lista devolveu. Searches mostra os 8 termos mais repetidos, e empty é quantas dessas vezes não acharam filme. O botão Export nessa página baixa um CSV desse retrato, com a data do clique. O catálogo de filmes não entra no arquivo. A página Admin coloca Reports e Activity lado a lado. Reports abre Metrics. Activity junta as avaliações recentes com os filmes cadastrados pela tela, por data. O catálogo importado não entra nessa lista. Em Metrics, Movies até Next-day returns continuam em cartões verdes. Daí para baixo, o uso do app e o catálogo aparecem em barras: verde para abertura e busca, azul para tempo, âmbar para nota e verde-água para volume. Discover não tem mais Filter by Genre nem Recent Activity. O filtro de gênero continua em All Movies, e a coluna Activity do Admin continua com avaliações e filmes cadastrados. O cadastro de filme fica em All Movies. O lápis do card abre a edição. O ano sai da data de lançamento e não aparece na tela, e os gêneros que o filme já tem entram marcados. A home se chama Discover. Catalog e Top Rated mostram o total de títulos no centro da faixa. Um "i" explica as faixas e, para o admin, que a edição fica nos cards. Um "i" ao lado de All Movies explica o catálogo e, para o admin, que a gestão fica nessa página: adicionar, editar e apagar. O botão Add movie fica nessa página, na mesma linha do Filters, com o total de títulos no meio. No formulário, um "i" ao lado de cada campo explica o formato. O front repete os limites do schema antes de enviar, então o Save não segue se algo estiver fora do padrão e o aviso aparece em cima do campo: título até 500 caracteres, sinopse até 4.000, diretor até 2.000 e sem número ou símbolo, duração de 1 a 100.000 minutos, e pôster e fundo, quando preenchidos, com até 2.048 caracteres, começando em `https://` e terminando em `.jpg`. A página do filme apaga com uma confirmação curta. Na edição, apagar abre um `dialog` modal: a página escurece e o restante deixa de receber clique até confirmar com `delete` seguido do nome do filme, ou cancelar. No cadastro, os campos vazios mostram um exemplo começando com `Ex:`, em itálico e mais apagado. Em Genres, um "i" diz que dá para marcar mais de um gênero ou nenhum. No formulário, Back e Cancel voltam para a página anterior. Em All Movies, Filters combina um ou mais gêneros com o ano: um ano exato, a partir de um ano, ou até um ano. A busca dos filmes só acontece no Apply Filters, e o ano exato não se mistura com From/To. A seleção aplicada fica na URL até ser desligada. A busca filtra `/movies?q=...` depois de uma pausa curta, e o Enter confirma na hora. All Movies pagina o catálogo de 24 em 24. O clique no card abre `/movies/{id}`, e o botão Back volta à lista na mesma página. Sem pôster, o card e o detalhe mostram um cartaz gerado: um de três desenhos e uma de dez cores, com a marca do Cinedex, o ano e a duração (`15min`, `1h 12min`). No card, o gênero aparece só no hover, o ano e o título ficam um pouco mais altos, a linha entre o título e a duração fica no meio, e essa duração usa uma fonte um pouco maior. No detalhe, o cartaz ainda mostra até dois gêneros. O desenho fica atrás desse texto. A duração usa `min` minúsculo também no detalhe e no hover do card. Sem imagem de fundo, o detalhe usa um fundo desenhado do Cinedex. Nessa página dá para gravar uma avaliação: nome, nota de 0 a 10, com no máximo uma casa decimal, e resenha. Um "i" em Name, Score e Review explica o formato. O aviso fica em cima do campo, sem o popup do navegador, e Add review fica desligado enquanto algo estiver fora do padrão. Edit movie, Delete movie e Add review clareiam no hover. A média e a lista atualizam na hora. Até 720px, a navegação vira uma faixa horizontal, os cards cabem dois por linha, o detalhe empilha o pôster e o formulário empilha data, duração e status. No desktop, a barra lateral e os cards de 180px permanecem.
-
-Na carga, `normalize_catalog_title` desfaz aspas dobradas de escape do CSV no título do filme. A sinopse usa a mesma regra, em `normalize_catalog_synopsis`, repetida até o `""` sumir. O arquivo original não muda, e título ou sinopse criados pela API não passam por essa regra. Pessoa cujo nome inteiro é um número não entra no catálogo: a linha e o vínculo com o filme saem, e o crédito não aparece. Um nome como `50 Cent` permanece.
-
-## API do catalogo
-
-A Fase 2 do backend ja expõe os seguintes endpoints na versao `v1`:
-- `GET /api/v1/movies` para listagem paginada, busca, filtro por um ou mais gêneros (`genre`, `genres`), ano (`year`, `year_from`, `year_to`), ordem por nota (`sort=rating`) e ordem por aberturas (`sort=views`);
-- `GET /api/v1/genres` para a lista de gêneros;
-- `GET /api/v1/reviews` para as avaliações mais recentes;
-- `GET /api/v1/movies/{id}` para detalhe completo;
-- `POST /api/v1/movies` para cadastro;
-- `PUT /api/v1/movies/{id}` para atualização;
-- `DELETE /api/v1/movies/{id}` para remoção;
-- `POST /api/v1/reviews` para inserir novas avaliacoes;
-- `GET /api/v1/admin/feed` para os filmes cadastrados pela tela e as avaliações recentes, juntos, por data;
-- `GET /api/v1/admin/metrics` para os totais do catálogo, a média das notas, os filmes cadastrados pela tela nos últimos 7 dias, quem mais comentou, o top 5 por média, os filmes por gênero (incluindo quem não tem gênero), os mais vistos, o tempo por gênero, os minutos de hoje, quem voltou no dia seguinte e os termos mais buscados;
-- `POST /api/v1/events` para gravar abertura do detalhe, tempo nessa página, tempo visível no catálogo e o termo buscado.
-
-Os retornos incluem relacionamento com generos, produtoras, pessoas, performance,
-resumo de avaliacoes e lista de reviews quando aplicavel.
-
-## Banco de dados e migrações
-
-O modelo usa um esquema estrela para o catálogo de filmes:
-
-- dimensões de filmes, gêneros, pessoas, produtoras e resumo de avaliações;
-- fato de desempenho financeiro e de engajamento;
-- tabelas de associação N:N entre filmes, gêneros, produtoras e pessoas;
-
-O schema corresponde aos nove arquivos CSV atuais da camada Diamond, com a
-adição de `movie_reviews`: uma avaliação individual por linha, na escala 0–10.
-A tabela aceita diretamente as colunas `sk_movie_review_id`, `sk_movie_id`,
-`nome`, `nota` e `comentario` do CSV enviado separadamente. `created_at` é
-gerado pelo banco. O contexto generativo não faz parte desta base. O uso do app fica em `catalog_events`, fora desses CSVs: a migração `0002_catalog_events` cria a tabela, e a `0003_catalog_event_search` guarda o termo buscado e quantos filmes a lista devolveu.
-
-Os CSVs de apoio ficam em `data/raw/`. A ordem esperada para futura carga é:
-primeiro os filmes em `dim_movies`, depois as tabelas auxiliares e por fim o
-CSV de `movie_reviews`.
-
-Para refazer a carga inicial em um banco limpo, execute o script de seed
-novamente. Ele limpa as tabelas antes de importar os arquivos por padrão.
-
-As tabelas são criadas exclusivamente pelo Alembic. Para evoluir os modelos,
-crie uma revisão e aplique-a:
+Os testes da API:
 
 ```bash
 cd backend
-.venv/bin/alembic revision --autogenerate -m "descreva a alteração"
-.venv/bin/alembic upgrade head
+.venv/bin/python -m pytest
 ```
 
-O banco padrão é SQLite local em `backend/rocketlab.db`. Ajuste
-`DATABASE_URL` no arquivo `.env` para usar outro banco compatível.
+## Funcionalidades
+
+- **Discover.** Três faixas: Catalog, Top Rated e Trending. Top Rated exige pelo menos 3 avaliações. Trending lista os filmes mais abertos, o maior à esquerda.
+- **All Movies.** Busca, filtro por gênero e ano, paginação e o cadastro, a edição e a exclusão de filmes.
+- **Detalhe.** Sinopse, créditos, pôster e avaliações de 0 a 10. Sem pôster, a tela mostra um cartaz gerado.
+- **Admin.** Métricas do catálogo e do uso, exportação desse retrato em CSV, e a atividade recente: avaliações e filmes cadastrados pela tela.
+
+Na carga, aspas escapadas de título e sinopse são desfeitas. Um nome de pessoa que é só um número não entra no crédito. Os CSVs originais não são reescritos.
+
+## API
+
+A referência interativa fica em http://localhost:8000/docs.
+
+- `GET /api/v1/movies` lista com paginação, busca, gênero, ano e ordem (`sort=rating` ou `sort=views`)
+- `GET /api/v1/movies/{id}` detalhe
+- `POST`, `PUT` e `DELETE /api/v1/movies` cadastro, edição e exclusão
+- `GET /api/v1/genres` gêneros
+- `GET` e `POST /api/v1/reviews` avaliações
+- `GET /api/v1/admin/metrics` métricas
+- `GET /api/v1/admin/feed` atividade do Admin
+- `POST /api/v1/events` abertura de filme, tempo na tela e busca
+
+## Estrutura
+
+```text
+.
+├── backend/          # API FastAPI, modelos e migrações Alembic
+├── frontend/         # interface Vite + React
+├── data/raw/         # CSVs da carga inicial
+└── docker-compose.yml
+```
+
+O banco padrão é SQLite. As tabelas nascem pelo Alembic. No Docker, o arquivo fica no volume; fora dele, em `backend/rocketlab.db`, ou no caminho de `DATABASE_URL`.
