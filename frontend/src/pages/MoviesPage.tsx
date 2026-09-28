@@ -32,7 +32,7 @@ export function MoviesPage() {
   const requested = Number(searchParams.get("page"));
   const page = Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
 
-  const manageInfo = "The full movie catalog. Admin only: here you can manage movies, including add, edit, and delete.";
+  const manageInfo = "The full movie catalog. Here you can search and manage movies, including add, edit, and delete.";
   let title = "All Movies";
   let info = manageInfo;
   if (query) {

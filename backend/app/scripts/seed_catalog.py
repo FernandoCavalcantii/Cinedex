@@ -12,10 +12,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import delete, func, insert, or_, select, update
 
 from app.db.session import AsyncSessionLocal
-from app.scripts.title_cleaning import normalize_catalog_title
+from app.scripts.person_names import is_numeric_person_name
+from app.scripts.title_cleaning import normalize_catalog_synopsis, normalize_catalog_title
 from app.movies.models import (
     CatalogEvent,
     DimCompany,
@@ -115,7 +116,7 @@ def _movie_rows(path: Path) -> Iterable[dict[str, Any]]:
             "ano_lancamento": _parse_int(normalized["ano_lancamento"]),
             "duracao_minutos": _parse_int(normalized["duracao_minutos"]),
             "status_filme": normalized["status_filme"],
-            "sinopse": normalized["sinopse"],
+            "sinopse": normalize_catalog_synopsis(normalized["sinopse"]),
             "url_poster": normalized["url_poster"],
             "url_backdrop": normalized["url_backdrop"],
         }
@@ -139,14 +140,24 @@ def _company_rows(path: Path) -> Iterable[dict[str, Any]]:
         }
 
 
-def _person_rows(path: Path) -> Iterable[dict[str, Any]]:
+def _person_rows(path: Path, skipped_ids: set[str]) -> Iterable[dict[str, Any]]:
     for row in _iter_csv_rows(path):
         normalized = _normalize_row(row)
+        if is_numeric_person_name(normalized["nome_pessoa"]):
+            skipped_ids.add(normalized["sk_person_id"])
+            continue
         yield {
             "sk_person_id": normalized["sk_person_id"],
             "nome_pessoa": normalized["nome_pessoa"],
             "tipo_pessoa": normalized["tipo_pessoa"],
         }
+
+
+def _person_bridge_rows(path: Path, skipped_ids: set[str]) -> Iterable[dict[str, Any]]:
+    for row in _bridge_rows(path, "sk_movie_id", "sk_person_id"):
+        if row["sk_person_id"] in skipped_ids:
+            continue
+        yield row
 
 
 def _bridge_rows(path: Path, first_column: str, second_column: str) -> Iterable[dict[str, Any]]:
@@ -230,6 +241,55 @@ async def _insert_rows(table: Any, rows: Iterable[dict[str, Any]], batch_size: i
     return inserted_rows
 
 
+async def _drop_numeric_people() -> None:
+    """Tira do banco a pessoa cujo nome inteiro é um número, e o vínculo com o filme."""
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(DimPerson.sk_person_id, DimPerson.nome_pessoa).where(
+                or_(
+                    DimPerson.nome_pessoa.op("GLOB")("[0-9]*"),
+                    DimPerson.nome_pessoa.op("GLOB")(".[0-9]*"),
+                    DimPerson.nome_pessoa.op("GLOB")("+*"),
+                    DimPerson.nome_pessoa.op("GLOB")("-*"),
+                )
+            )
+        )
+        person_ids = [person_id for person_id, name in result.all() if is_numeric_person_name(name)]
+        if not person_ids:
+            return
+
+        for start in range(0, len(person_ids), 500):
+            chunk = person_ids[start : start + 500]
+            await session.execute(
+                delete(bridge_movie_person).where(bridge_movie_person.c.sk_person_id.in_(chunk))
+            )
+            await session.execute(delete(DimPerson).where(DimPerson.sk_person_id.in_(chunk)))
+        await session.commit()
+        LOGGER.info("Pessoas com nome numérico removidas: %s.", len(person_ids))
+
+
+async def _unwrap_synopsis_quotes() -> None:
+    """Tira o escape de aspas que sobrou na sinopse já gravada."""
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(DimMovie.sk_movie_id, DimMovie.sinopse).where(DimMovie.sinopse.contains('""'))
+        )
+        changed = 0
+        for movie_id, synopsis in result.all():
+            cleaned = normalize_catalog_synopsis(synopsis)
+            if cleaned == synopsis:
+                continue
+            await session.execute(
+                update(DimMovie).where(DimMovie.sk_movie_id == movie_id).values(sinopse=cleaned)
+            )
+            changed += 1
+        if changed:
+            await session.commit()
+            LOGGER.info("Sinopses com aspas escapadas regravadas: %s.", changed)
+
+
 async def _catalog_has_movies() -> bool:
     async with AsyncSessionLocal() as session:
         total = await session.scalar(select(func.count()).select_from(DimMovie))
@@ -284,6 +344,8 @@ async def seed_catalog(
 ) -> None:
     if skip_if_present and await _catalog_has_movies():
         LOGGER.info("Catálogo já populado no volume. Carga ignorada.")
+        await _drop_numeric_people()
+        await _unwrap_synopsis_quotes()
         await _seed_trending_opens()
         return
 
@@ -312,14 +374,15 @@ async def seed_catalog(
         "movie_reviews": CsvTableSpec(data_root / "bases-2" / "movies_reviews.csv", MovieReview.__table__),
     }
 
+    skipped_person_ids: set[str] = set()
     row_iterators = {
         "dim_movies": _movie_rows,
         "dim_genres": _genre_rows,
         "dim_companies": _company_rows,
-        "dim_people": _person_rows,
+        "dim_people": lambda path: _person_rows(path, skipped_person_ids),
         "bridge_movie_genre": lambda path: _bridge_rows(path, "sk_movie_id", "sk_genre_id"),
         "bridge_movie_company": lambda path: _bridge_rows(path, "sk_movie_id", "sk_company_id"),
-        "bridge_movie_person": lambda path: _bridge_rows(path, "sk_movie_id", "sk_person_id"),
+        "bridge_movie_person": lambda path: _person_bridge_rows(path, skipped_person_ids),
         "fact_movies_performance": _performance_rows,
         "dim_reviews": _review_summary_rows,
         "movie_reviews": _movie_review_rows,

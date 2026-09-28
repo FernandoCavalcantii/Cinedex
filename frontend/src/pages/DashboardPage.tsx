@@ -6,7 +6,7 @@ export function DashboardPage() {
     <section>
       <PageHeader
         title="Discover"
-        info="Browse movies by section, such as Trending and Top Rated. Admin only: you can edit movies from the cards."
+        info="Browse movies by section, such as Trending and Top Rated. You can edit movies from the cards."
       />
       <MovieStrip title="Catalog" limit={12} viewAllTo="/movies" source="discover" />
       <MovieStrip
