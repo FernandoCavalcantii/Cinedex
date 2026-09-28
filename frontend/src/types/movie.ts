@@ -38,6 +38,16 @@ export type PersonSummary = {
   tipo_pessoa: string;
 };
 
+export type AdminFeedItem = {
+  kind: "added" | "review";
+  sk_movie_id: string;
+  titulo: string;
+  created_at: string;
+  sk_movie_review_id: string | null;
+  nome: string | null;
+  nota: number | null;
+};
+
 export type RecentActivity = {
   sk_movie_review_id: string;
   sk_movie_id: string;

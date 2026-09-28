@@ -200,6 +200,7 @@ export function MovieForm({ movieId, onLeave }: MovieFormProps) {
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ["movies"] });
       await queryClient.invalidateQueries({ queryKey: ["metrics"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
       await queryClient.invalidateQueries({ queryKey: ["movie", saved.sk_movie_id] });
       navigate(`/movies/${saved.sk_movie_id}`);
     },
@@ -217,6 +218,7 @@ export function MovieForm({ movieId, onLeave }: MovieFormProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["movies"] });
       await queryClient.invalidateQueries({ queryKey: ["metrics"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
       navigate("/movies");
     },
     onError: (caught: unknown) => {

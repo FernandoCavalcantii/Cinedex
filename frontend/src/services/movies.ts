@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "./api";
 import type {
+  AdminFeedItem,
   CatalogMetrics,
   GenreSummary,
   MovieDetail,
@@ -73,6 +74,10 @@ export function updateMovie(movieId: string, movie: MovieInput): Promise<MovieDe
 
 export function deleteMovie(movieId: string): Promise<void> {
   return apiDelete(`movies/${movieId}`);
+}
+
+export function listAdminFeed(limit = 8, signal?: AbortSignal): Promise<AdminFeedItem[]> {
+  return apiGet<AdminFeedItem[]>("admin/feed", { limit }, signal);
 }
 
 export function getCatalogMetrics(signal?: AbortSignal): Promise<CatalogMetrics> {

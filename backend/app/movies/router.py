@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.movies.schemas import (
+    AdminFeedItem,
     CatalogEventCreate,
     CatalogMetrics,
     GenreSummary,
@@ -24,6 +25,7 @@ from app.movies.service import (
     delete_movie,
     get_catalog_metrics,
     get_movie,
+    list_admin_feed,
     record_catalog_event,
     list_genres,
     list_movies,
@@ -102,6 +104,14 @@ async def read_recent_activity(
     session: AsyncSession = Depends(get_db),
 ) -> list[RecentActivity]:
     return await list_recent_activity(session, limit=limit)
+
+
+@admin_router.get("/feed", response_model=list[AdminFeedItem])
+async def read_admin_feed(
+    limit: int = Query(8, ge=1, le=20),
+    session: AsyncSession = Depends(get_db),
+) -> list[AdminFeedItem]:
+    return await list_admin_feed(session, limit=limit)
 
 
 @admin_router.get("/metrics", response_model=CatalogMetrics)

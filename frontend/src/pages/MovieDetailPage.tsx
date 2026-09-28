@@ -58,6 +58,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["movies"] });
       await queryClient.invalidateQueries({ queryKey: ["metrics"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
       navigate("/movies");
     },
     onError: (caught: unknown) => {

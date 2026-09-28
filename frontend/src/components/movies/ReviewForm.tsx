@@ -65,6 +65,8 @@ export function ReviewForm({ movieId }: ReviewFormProps) {
       setAttempted(false);
       await queryClient.invalidateQueries({ queryKey: ["movie", movieId] });
       await queryClient.invalidateQueries({ queryKey: ["metrics"] });
+      await queryClient.invalidateQueries({ queryKey: ["activity"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
     },
     onError: (caught: unknown) => {
       if (caught instanceof ApiError) {

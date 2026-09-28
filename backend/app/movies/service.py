@@ -20,6 +20,7 @@ from app.movies.models import (
     bridge_movie_genre,
 )
 from app.movies.schemas import (
+    AdminFeedItem,
     CatalogEventCreate,
     CatalogMetrics,
     CompanySummary,
@@ -47,6 +48,7 @@ from app.movies.schemas import (
 
 MISSING_SYNOPSIS = "sem descrição"
 REPLACEMENT_SYNOPSIS = "No synopsis available."
+CATALOG_ACTOR = "catalog-admin"
 
 
 def _coalesce_decimal(value: Decimal | None) -> float | None:
@@ -221,6 +223,45 @@ async def list_genres(session: AsyncSession) -> list[GenreSummary]:
     return [GenreSummary.model_validate(genre) for genre in result.scalars().all()]
 
 
+async def list_admin_feed(session: AsyncSession, *, limit: int) -> list[AdminFeedItem]:
+    review_rows = await session.execute(
+        select(MovieReview, DimMovie.titulo)
+        .join(DimMovie, DimMovie.sk_movie_id == MovieReview.sk_movie_id)
+        .order_by(MovieReview.created_at.desc(), MovieReview.sk_movie_review_id.desc())
+        .limit(limit)
+    )
+    movie_rows = await session.execute(
+        select(CatalogEvent.occurred_at, DimMovie.sk_movie_id, DimMovie.titulo)
+        .join(DimMovie, DimMovie.sk_movie_id == CatalogEvent.sk_movie_id)
+        .where(CatalogEvent.event_type == "movie_created")
+        .order_by(CatalogEvent.occurred_at.desc(), DimMovie.titulo)
+        .limit(limit)
+    )
+    items = [
+        AdminFeedItem(
+            kind="review",
+            sk_movie_review_id=review.sk_movie_review_id,
+            sk_movie_id=review.sk_movie_id,
+            titulo=title,
+            nome=review.nome,
+            nota=review.nota,
+            created_at=review.created_at,
+        )
+        for review, title in review_rows.all()
+    ]
+    items.extend(
+        AdminFeedItem(
+            kind="added",
+            sk_movie_id=movie_id,
+            titulo=title,
+            created_at=occurred_at,
+        )
+        for occurred_at, movie_id, title in movie_rows.all()
+    )
+    items.sort(key=lambda item: item.created_at, reverse=True)
+    return items[:limit]
+
+
 async def list_recent_activity(session: AsyncSession, *, limit: int) -> list[RecentActivity]:
     statement = (
         select(MovieReview, DimMovie.titulo)
@@ -372,6 +413,14 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> MovieDet
     movie.genres = genres
     movie.people = directors
     session.add(movie)
+    await session.flush()
+    session.add(
+        CatalogEvent(
+            visitor_id=CATALOG_ACTOR,
+            event_type="movie_created",
+            sk_movie_id=movie.sk_movie_id,
+        )
+    )
 
     try:
         await session.commit()
@@ -521,6 +570,21 @@ async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
     genres = [
         MetricGenreCount(nome_genero=name, movie_count=int(count)) for name, count in genre_rows.all()
     ]
+    no_genre_count = await session.scalar(
+        select(func.count()).select_from(DimMovie).where(~DimMovie.genres.any())
+    )
+    if no_genre_count:
+        missing = MetricGenreCount(nome_genero="No genre", movie_count=int(no_genre_count))
+        insert_at = next(
+            (
+                index
+                for index, genre in enumerate(genres)
+                if genre.movie_count < missing.movie_count
+                or (genre.movie_count == missing.movie_count and genre.nome_genero > missing.nome_genero)
+            ),
+            len(genres),
+        )
+        genres.insert(insert_at, missing)
 
     viewed_rows = await session.execute(
         select(DimMovie.sk_movie_id, DimMovie.titulo, func.count().label("qtd"))
@@ -589,6 +653,8 @@ async def get_catalog_metrics(session: AsyncSession) -> CatalogMetrics:
             .join(
                 later,
                 (earlier.visitor_id == later.visitor_id)
+                & (earlier.event_type != "movie_created")
+                & (later.event_type != "movie_created")
                 & (func.date(later.occurred_at) == func.date(earlier.occurred_at, "+1 day")),
             )
         )

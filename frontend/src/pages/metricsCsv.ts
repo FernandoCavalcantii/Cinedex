@@ -22,10 +22,10 @@ export function buildMetricsCsv(metrics: CatalogMetrics, exportedAt: Date): stri
     ["summary", "Reviews", metrics.review_count, "Notes and comments"],
     ["summary", "Users", metrics.user_count, "Distinct names on reviews"],
     ["summary", "Unreviewed", metrics.unreviewed_count, "Movies with no review"],
-    ["summary", "Average", metrics.average_rating === null ? "" : metrics.average_rating.toFixed(1), "Across all reviews"],
+    ["summary", "Average score", metrics.average_rating === null ? "" : metrics.average_rating.toFixed(1), "Mean of all review scores, 0 to 10"],
     ["summary", "Last 7 days", metrics.reviews_last_7_days, "Reviews saved this week"],
     ["summary", "Today", metrics.catalog_seconds_today, "Seconds in the catalog today"],
-    ["summary", "Returned", metrics.returning_visitors, "Came back the next day"],
+    ["summary", "Next-day returns", metrics.returning_visitors, "Same anonymous browser on a day and the next. Creating a movie does not count."],
   ];
 
   for (const movie of metrics.most_viewed) {

@@ -132,6 +132,16 @@ class RecentActivity(BaseModel):
     created_at: datetime
 
 
+class AdminFeedItem(BaseModel):
+    kind: Literal["added", "review"]
+    sk_movie_id: str
+    titulo: str
+    created_at: datetime
+    sk_movie_review_id: str | None = None
+    nome: str | None = None
+    nota: float | None = None
+
+
 class ReviewCreate(BaseModel):
     movie_id: str = Field(min_length=1, max_length=64)
     nome: str = Field(min_length=1, max_length=120)

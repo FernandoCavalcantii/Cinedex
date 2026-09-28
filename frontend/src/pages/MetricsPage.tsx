@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/layout/PageHeader";
@@ -46,145 +47,287 @@ function BackButton() {
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note: string }) {
+function MetricInfo({ label, text }: { label: string; text: string }) {
+  const infoId = useId();
+
+  return (
+    <span className={styles.infoWrap}>
+      <button type="button" className={styles.info} aria-label={`About ${label}`} aria-describedby={infoId}>
+        i
+      </button>
+      <span id={infoId} className={styles.tip} role="tooltip">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+function Stat({ label, value, note, info }: { label: string; value: string; note: string; info: string }) {
   return (
     <article className={styles.stat}>
-      <p className={styles.statLabel}>{label}</p>
+      <p className={styles.statLabel}>
+        {label}
+        <MetricInfo label={label} text={info} />
+      </p>
       <p className={styles.statValue}>{value}</p>
       <p className={styles.statNote}>{note}</p>
     </article>
   );
 }
 
+function PanelTitle({ title, info }: { title: string; info: string }) {
+  return (
+    <div className={styles.panelTitle}>
+      <h3>{title}</h3>
+      <MetricInfo label={title} text={info} />
+    </div>
+  );
+}
+
+function BarChart({
+  rows,
+  showEmptyLegend,
+  scroll,
+}: {
+  rows: {
+    key: string;
+    label: ReactNode;
+    valueText: string;
+    amount: number;
+    scale: number;
+    note?: string;
+    emptyAmount?: number;
+  }[];
+  showEmptyLegend?: boolean;
+  scroll?: boolean;
+}) {
+  return (
+    <>
+      {showEmptyLegend ? (
+        <p className={styles.legend}>
+          <span>
+            <i className={styles.swatch} aria-hidden="true" /> With results
+          </span>
+          <span>
+            <i className={styles.swatchMiss} aria-hidden="true" /> Empty
+          </span>
+        </p>
+      ) : null}
+      <ul className={scroll ? `${styles.bars} ${styles.barsScroll}` : styles.bars}>
+        {rows.map((row) => {
+          const empty = Math.min(row.emptyAmount ?? 0, row.amount);
+          const found = row.amount - empty;
+          const width = row.scale <= 0 || row.amount <= 0 ? 0 : (row.amount / row.scale) * 100;
+          return (
+            <li key={row.key}>
+              <div className={styles.barHead}>
+                <span className={styles.barLabel}>{row.label}</span>
+                <strong>{row.valueText}</strong>
+              </div>
+              <span className={styles.track} aria-hidden="true">
+                {width > 0 ? (
+                  <span className={styles.fill} style={{ width: `${width}%` }}>
+                    <span className={styles.found} style={{ flexGrow: found }} />
+                    {empty > 0 ? <span className={styles.miss} style={{ flexGrow: empty }} /> : null}
+                  </span>
+                ) : null}
+              </span>
+              {row.note ? <span className={styles.barNote}>{row.note}</span> : null}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
 function MetricsBody({ metrics }: { metrics: CatalogMetrics }) {
-  const largestGenre = metrics.genres.reduce((largest, genre) => Math.max(largest, genre.movie_count), 0);
+  const largestViews = metrics.most_viewed.reduce((largest, movie) => Math.max(largest, movie.view_count), 0);
+  const largestSearch = metrics.top_searches.reduce((largest, item) => Math.max(largest, item.search_count), 0);
   const largestAttention = metrics.attention_by_genre.reduce(
     (largest, genre) => Math.max(largest, genre.duration_seconds),
     0,
   );
+  const largestReviewer = metrics.top_reviewers.reduce((largest, person) => Math.max(largest, person.review_count), 0);
+  const largestGenre = metrics.genres.reduce((largest, genre) => Math.max(largest, genre.movie_count), 0);
+  const searchesHaveEmpty = metrics.top_searches.some((item) => item.empty_count > 0);
 
   return (
     <>
       <div className={styles.stats}>
-        <Stat label="Movies" value={formatCount(metrics.movie_count)} note="In the catalog" />
-        <Stat label="Reviews" value={formatCount(metrics.review_count)} note="Notes and comments" />
-        <Stat label="Users" value={formatCount(metrics.user_count)} note="Distinct names on reviews" />
-        <Stat label="Unreviewed" value={formatCount(metrics.unreviewed_count)} note="Movies with no review" />
         <Stat
-          label="Average"
-          value={metrics.average_rating === null ? "—" : metrics.average_rating.toFixed(1)}
-          note="Across all reviews"
+          label="Movies"
+          value={formatCount(metrics.movie_count)}
+          note="In the catalog"
+          info="Movies in the catalog. Adding one raises it. Deleting one lowers it."
         />
-        <Stat label="Last 7 days" value={formatCount(metrics.reviews_last_7_days)} note="Reviews saved this week" />
-        <Stat label="Today" value={formatSpent(metrics.catalog_seconds_today)} note="Time in the catalog today" />
-        <Stat label="Returned" value={formatCount(metrics.returning_visitors)} note="Came back the next day" />
+        <Stat
+          label="Reviews"
+          value={formatCount(metrics.review_count)}
+          note="Notes and comments"
+          info="Saved reviews. Deleting a movie removes its reviews. A review cannot be deleted alone."
+        />
+        <Stat
+          label="Users"
+          value={formatCount(metrics.user_count)}
+          note="Distinct names on reviews"
+          info={'Distinct names on reviews, exact text. "Ana" and "ana" count apart. Not accounts.'}
+        />
+        <Stat
+          label="Unreviewed"
+          value={formatCount(metrics.unreviewed_count)}
+          note="Movies with no review"
+          info="Movies with no review. The first review, or deleting the movie, lowers it."
+        />
+        <Stat
+          label="Average score"
+          value={metrics.average_rating === null ? "—" : metrics.average_rating.toFixed(1)}
+          note="Mean of all review scores, 0 to 10"
+          info="Mean of every review score, 0 to 10. A movie with more reviews pulls it more."
+        />
+        <Stat
+          label="Last 7 days"
+          value={formatCount(metrics.reviews_last_7_days)}
+          note="Reviews saved this week"
+          info="Reviews saved in the last 7 days. Imported reviews use the import time."
+        />
+        <Stat
+          label="Today"
+          value={formatSpent(metrics.catalog_seconds_today)}
+          note="Time in the catalog today"
+          info="Time the app was visible today, including movie pages. Counted once."
+        />
+        <Stat
+          label="Next-day returns"
+          value={formatCount(metrics.returning_visitors)}
+          note="Two days in a row"
+          info="Same anonymous browser on a day and the next. Creating a movie does not count."
+        />
       </div>
 
-      <section className={styles.panel}>
-        <h2>Most viewed</h2>
-        <p className={styles.hint}>Each opening of the movie page counts once.</p>
-        {metrics.most_viewed.length === 0 ? <p className={styles.empty}>No visits yet.</p> : null}
-        <ol className={styles.ranked}>
-          {metrics.most_viewed.map((movie) => (
-            <li key={movie.sk_movie_id}>
-              <Link to={`/movies/${movie.sk_movie_id}`} state={{ source: "metrics" }}>
-                {movie.titulo}
-              </Link>
-              <strong>{formatCount(movie.view_count)}</strong>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <div className={styles.board}>
+        <h2 className={styles.group}>Usage</h2>
+        <section className={`${styles.panel} ${styles.toneUsage}`}>
+          <PanelTitle
+            title="Most viewed"
+            info="Top 5 by page openings. A refresh counts again. The edit pencil does not."
+          />
+          <p className={styles.hint}>Each opening of the movie page counts once.</p>
+          {metrics.most_viewed.length === 0 ? <p className={styles.empty}>No visits yet.</p> : null}
+          <BarChart
+            rows={metrics.most_viewed.map((movie) => ({
+              key: movie.sk_movie_id,
+              label: (
+                <Link to={`/movies/${movie.sk_movie_id}`} state={{ source: "metrics" }}>
+                  {movie.titulo}
+                </Link>
+              ),
+              valueText: formatCount(movie.view_count),
+              amount: movie.view_count,
+              scale: largestViews,
+            }))}
+          />
+        </section>
 
-      <section className={styles.panel}>
-        <h2>Searches</h2>
-        <p className={styles.hint}>Each search that runs counts. The same text later counts again.</p>
-        {metrics.top_searches.length === 0 ? <p className={styles.empty}>No searches yet.</p> : null}
-        <ol className={styles.ranked}>
-          {metrics.top_searches.map((item) => (
-            <li key={item.search_term}>
-              <Link to={searchPath(item.search_term)}>{item.search_term}</Link>
-              <strong>
-                {formatCount(item.search_count)}
-                {item.empty_count > 0 ? <span>{formatCount(item.empty_count)} empty</span> : null}
-              </strong>
-            </li>
-          ))}
-        </ol>
-      </section>
+        <section className={`${styles.panel} ${styles.toneUsage}`}>
+          <PanelTitle
+            title="Searches"
+            info={'Top 8 exact search texts. Counts when the list loads. Empty means zero movies.'}
+          />
+          <p className={styles.hint}>Each search that runs counts. The same text later counts again.</p>
+          {metrics.top_searches.length === 0 ? <p className={styles.empty}>No searches yet.</p> : null}
+          <BarChart
+            showEmptyLegend={searchesHaveEmpty}
+            rows={metrics.top_searches.map((item) => ({
+              key: item.search_term,
+              label: <Link to={searchPath(item.search_term)}>{item.search_term}</Link>,
+              valueText: formatCount(item.search_count),
+              amount: item.search_count,
+              scale: largestSearch,
+              emptyAmount: item.empty_count,
+              note: item.empty_count > 0 ? `${formatCount(item.empty_count)} empty` : undefined,
+            }))}
+          />
+        </section>
 
-      <section className={styles.panel}>
-        <h2>Attention by genre</h2>
-        <p className={styles.hint}>Time on the movie page. A movie in two genres counts in both.</p>
-        {metrics.attention_by_genre.length === 0 ? <p className={styles.empty}>No time recorded yet.</p> : null}
-        <ul className={styles.genres}>
-          {metrics.attention_by_genre.map((genre) => (
-            <li key={genre.nome_genero}>
-              <div className={styles.genreHead}>
-                <span>{genre.nome_genero}</span>
-                <strong>{formatSpent(genre.duration_seconds)}</strong>
-              </div>
-              <span className={styles.bar} aria-hidden="true">
-                <span
-                  style={{
-                    width: largestAttention === 0 ? "0%" : `${(genre.duration_seconds / largestAttention) * 100}%`,
-                  }}
-                />
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className={`${styles.panel} ${styles.wide} ${styles.toneTime}`}>
+          <PanelTitle
+            title="Attention by genre"
+            info="Time on movie pages, top 8 genres. A movie in two genres counts in both."
+          />
+          <p className={styles.hint}>Time on the movie page. A movie in two genres counts in both.</p>
+          {metrics.attention_by_genre.length === 0 ? <p className={styles.empty}>No time recorded yet.</p> : null}
+          <BarChart
+            rows={metrics.attention_by_genre.map((genre) => ({
+              key: genre.nome_genero,
+              label: genre.nome_genero,
+              valueText: formatSpent(genre.duration_seconds),
+              amount: genre.duration_seconds,
+              scale: largestAttention,
+            }))}
+          />
+        </section>
 
-      <section className={styles.panel}>
-        <h2>Most reviews</h2>
-        {metrics.top_reviewers.length === 0 ? <p className={styles.empty}>No reviews yet.</p> : null}
-        <ol className={styles.ranked}>
-          {metrics.top_reviewers.map((person) => (
-            <li key={person.nome}>
-              <span>{person.nome}</span>
-              <strong>{formatCount(person.review_count)}</strong>
-            </li>
-          ))}
-        </ol>
-      </section>
+        <h2 className={styles.group}>Catalog</h2>
+        <section className={`${styles.panel} ${styles.toneScore}`}>
+          <PanelTitle
+            title="Top rated"
+            info="Top 5 average scores, only movies with at least 3 reviews."
+          />
+          <p className={styles.hint}>Score from 0 to 10. At least 3 reviews.</p>
+          {metrics.top_rated.length === 0 ? <p className={styles.empty}>No movie has 3 reviews yet.</p> : null}
+          <BarChart
+            rows={metrics.top_rated.map((movie) => ({
+              key: movie.sk_movie_id,
+              label: (
+                <Link to={`/movies/${movie.sk_movie_id}`} state={{ source: "metrics" }}>
+                  {movie.titulo}
+                </Link>
+              ),
+              valueText: movie.average_rating.toFixed(1),
+              amount: movie.average_rating,
+              scale: 10,
+              note: `${formatCount(movie.review_count)} reviews`,
+            }))}
+          />
+        </section>
 
-      <section className={styles.panel}>
-        <h2>Top rated</h2>
-        <p className={styles.hint}>At least 3 reviews.</p>
-        {metrics.top_rated.length === 0 ? <p className={styles.empty}>No movie has 3 reviews yet.</p> : null}
-        <ol className={styles.ranked}>
-          {metrics.top_rated.map((movie) => (
-            <li key={movie.sk_movie_id}>
-              <Link to={`/movies/${movie.sk_movie_id}`} state={{ source: "metrics" }}>
-                {movie.titulo}
-              </Link>
-              <strong>
-                {movie.average_rating.toFixed(1)}
-                <span>{formatCount(movie.review_count)}</span>
-              </strong>
-            </li>
-          ))}
-        </ol>
-      </section>
+        <section className={`${styles.panel} ${styles.toneVolume}`}>
+          <PanelTitle
+            title="Most reviews"
+            info={'Top 8 names by review count, exact text. "Ana" and "ana" stay apart.'}
+          />
+          <p className={styles.hint}>Names with the most reviews.</p>
+          {metrics.top_reviewers.length === 0 ? <p className={styles.empty}>No reviews yet.</p> : null}
+          <BarChart
+            rows={metrics.top_reviewers.map((person) => ({
+              key: person.nome,
+              label: person.nome,
+              valueText: formatCount(person.review_count),
+              amount: person.review_count,
+              scale: largestReviewer,
+            }))}
+          />
+        </section>
 
-      <section className={styles.panel}>
-        <h2>Movies by genre</h2>
-        <p className={styles.hint}>A movie in two genres counts in both.</p>
-        <ul className={styles.genres}>
-          {metrics.genres.map((genre) => (
-            <li key={genre.nome_genero}>
-              <div className={styles.genreHead}>
-                <span>{genre.nome_genero}</span>
-                <strong>{formatCount(genre.movie_count)}</strong>
-              </div>
-              <span className={styles.bar} aria-hidden="true">
-                <span style={{ width: largestGenre === 0 ? "0%" : `${(genre.movie_count / largestGenre) * 100}%` }} />
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className={`${styles.panel} ${styles.wide} ${styles.toneVolume}`}>
+          <PanelTitle
+            title="Movies by genre"
+            info="Movies per genre. Movies with none are listed as No genre. A movie in two genres counts in both."
+          />
+          <p className={styles.hint}>Includes movies with no genre. A movie in two genres counts in both.</p>
+          <BarChart
+            scroll
+            rows={metrics.genres.map((genre) => ({
+              key: genre.nome_genero,
+              label: genre.nome_genero,
+              valueText: formatCount(genre.movie_count),
+              amount: genre.movie_count,
+              scale: largestGenre,
+            }))}
+          />
+        </section>
+      </div>
     </>
   );
 }
@@ -205,7 +348,7 @@ export function MetricsPage() {
       </div>
       <PageHeader
         title="Metrics"
-        info="Users are distinct names on reviews. The same name counts once. When accounts exist, this number becomes registered users. Most viewed counts each opening of a movie page. Today is time with the catalog open. Searches counts each search that runs."
+        info="Each number is calculated when this page loads. The i beside a metric states its exact rule."
       />
       {metrics.isPending ? <p className={styles.status}>Loading metrics…</p> : null}
       {metrics.isError ? (
